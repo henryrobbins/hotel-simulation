@@ -206,13 +206,41 @@ class Tester {
 	}
 
 	@Test
+	void testCSVConverter() {
+
+		for (int i= 0; i < 50; i++ ) {
+
+			double[][] results= new double[2][5];
+
+			Simulation sim= new Simulation(10, "TestFile" + i);
+			sim.maxAvgSatisfactionSTMin();
+
+			results[0][0]= sim.getMetPreferences();
+			results[0][1]= sim.getMinimumPreferences();
+			results[0][2]= sim.getAverageSatisfaction();
+			results[0][3]= sim.getMinimumSatisfaction();
+			results[0][4]= sim.getTotalUpgrades();
+
+			Simulation sim1= new Simulation("TestFile" + i);
+
+			results[1][0]= sim1.getMetPreferences();
+			results[1][1]= sim1.getMinimumPreferences();
+			results[1][2]= sim1.getAverageSatisfaction();
+			results[1][3]= sim1.getMinimumSatisfaction();
+			results[1][4]= sim1.getTotalUpgrades();
+
+		}
+
+	}
+
+	@Test
 	void randomConstructor() {
 
-		for (int i= 0; i < 25; i++ ) {
+		for (int i= 0; i < 50; i++ ) {
 
 			Simulation sim= new Simulation(25, "Tester");
 
-			double[][] results= new double[5][5];
+			double[][] results= new double[8][5];
 
 			sim.maximizeMetPreferences();
 			results[0][0]= sim.getMetPreferences();
@@ -248,10 +276,31 @@ class Tester {
 			results[4][2]= sim.getAverageSatisfaction();
 			results[4][3]= sim.getMinimumSatisfaction();
 			results[4][4]= sim.getTotalUpgrades();
+			sim.reset();
+			sim.maxAvgSatisfactionSTMin();
+			results[5][0]= sim.getMetPreferences();
+			results[5][1]= sim.getMinimumPreferences();
+			results[5][2]= sim.getAverageSatisfaction();
+			results[5][3]= sim.getMinimumSatisfaction();
+			results[5][4]= sim.getTotalUpgrades();
+			sim.reset();
+			sim.maximizeSatisfaction();
+			results[6][0]= sim.getMetPreferences();
+			results[6][1]= sim.getMinimumPreferences();
+			results[6][2]= sim.getAverageSatisfaction();
+			results[6][3]= sim.getMinimumSatisfaction();
+			results[6][4]= sim.getTotalUpgrades();
+			sim.reset();
+//			sim.minUpgradesSTAvgAndMin(1, 1);
+//			results[7][0]= sim.getMetPreferences();
+//			results[7][1]= sim.getMinimumPreferences();
+//			results[7][2]= sim.getAverageSatisfaction();
+//			results[7][3]= sim.getMinimumSatisfaction();
+//			results[7][4]= sim.getTotalUpgrades();
 
 			DecimalFormat df= new DecimalFormat("##.#####");
 
-			for (int j= 0; j < 5; j++ ) {
+			for (int j= 0; j < 8; j++ ) {
 				for (int k= 0; k < 5; k++ ) {
 					results[j][k]= Double.parseDouble(df.format(results[j][k]));
 				}
@@ -281,6 +330,9 @@ class Tester {
 			assertEquals(true, results[4][4] <= results[1][4]);
 			assertEquals(true, results[4][4] <= results[2][4]);
 			assertEquals(true, results[4][4] <= results[3][4]);
+
+			assertEquals(true, results[5][2] == results[6][2]);
+			assertEquals(true, results[5][3] == results[6][3]);
 
 		}
 

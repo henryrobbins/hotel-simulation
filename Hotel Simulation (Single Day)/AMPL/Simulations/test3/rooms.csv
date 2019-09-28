@@ -1,7 +1,7 @@
-number, type, attributes
+number,type,attributes
 1,1,A:B
 2,1,A:C:D
 3,1,A:B:C
-4,1,D:C
+4,1,C:D
 5,2,A:B
 6,3,C

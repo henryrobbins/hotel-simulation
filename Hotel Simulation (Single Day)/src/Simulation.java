@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 
 import org.apache.commons.lang3.time.StopWatch;
@@ -35,6 +36,8 @@ public class Simulation {
 	private HashSet<Integer> guestIDs= new HashSet<>();
 	/** a set of all used arrival positions */
 	private HashSet<Integer> arrivalPositions= new HashSet<>();
+
+	private AMPL ampl= new AMPL(new Environment(Paths.get("AMPL").toString()));
 
 	// STATISTICS FIELDS
 
@@ -103,8 +106,6 @@ public class Simulation {
 			feasible= canAccommodate();
 		}
 
-		System.out.println(guests.size());
-
 		try {
 			Files.createDirectories(Paths.get("AMPL", "Simulations", name));
 		} catch (IOException e) {
@@ -158,6 +159,8 @@ public class Simulation {
 
 		// create name.dat file for use by AMPL
 		convert();
+		ampl.setOption("solver", "gurobi");
+		convertToCSV();
 		// make invariant hold true for assignments field
 		for (Room room : rooms) {
 			assignments.put(room, null);
@@ -166,6 +169,11 @@ public class Simulation {
 	}
 
 	// GETTERS FOR STATISTICS
+
+	/** TODO: delete */
+	public double getNumGuests() {
+		return guests.size();
+	}
 
 	/** Returns the total met preferences for the current room assignment */
 	public int getMetPreferences() {
@@ -299,37 +307,103 @@ public class Simulation {
 		return runTime;
 	}
 
+	// TODO: method specification
+	// TODO: determine cause of time difference
+	public double maximizeSatisfaction() {
+		double runTime= runIP("maxSatisfaction");
+		System.out.println("Max Satisfaction");
+		printStats();
+		return runTime;
+	}
+
+	public double maxAvgSatisfactionSTMin() {
+
+		double runTime= maximizeMinimumSatisfaction();
+		double minimum= minimumSatisfaction;
+		reset();
+
+		StopWatch watch= new StopWatch();
+		watch.start();
+		try {
+			ampl.read(Paths.get("AMPL", "Models", "maxAvgSatisfactionSubjectToMinimum" + ".mod").toString());
+			ampl.readData(Paths.get("AMPL", "Simulations", name, name + ".dat").toString());
+		} catch (Exception e) {
+			ampl.close();
+		}
+		ampl.getParameter("minimum").set(minimum);
+		ampl.solve();
+		assignmentsFromAMPL();
+		ampl.reset();
+		watch.stop();
+		runTime+= watch.getNanoTime() / 1000000.0;
+
+		System.out.println("Max Avg Satisfaction S.T. Min");
+		printStats();
+		return runTime;
+	}
+
+	// TODO: method specification
+	public double minUpgradesSTAvgAndMin(double alpha, double beta) {
+
+		double runTime= maxAvgSatisfactionSTMin();
+		double minimum= minimumSatisfaction;
+		double average= averageSatisfaction;
+		reset();
+
+		StopWatch watch= new StopWatch();
+		watch.start();
+		try {
+			ampl.read(Paths.get("AMPL", "Models", "maxUpgradesSubjectToSatisfaction" + ".mod").toString());
+			ampl.readData(Paths.get("AMPL", "Simulations", name, name + ".dat").toString());
+		} catch (Exception e) {
+			ampl.close();
+		}
+		ampl.getParameter("average").set(average * alpha);
+		ampl.getParameter("minimum").set(minimum * beta);
+		ampl.solve();
+		assignmentsFromAMPL();
+		ampl.reset();
+		watch.stop();
+		runTime+= watch.getNanoTime() / 1000000.0;
+
+		System.out.println("Min Upgrades S.T. Average and Minimum");
+		printStats();
+		return runTime;
+	}
+
+	// TODO: correct method specification
 	/** Creates an instance of AMPL and uses it to solve an IP yielding a valid room <br>
 	 * assignment from the given model and the .dat file in the directory name <br>
 	 * returns elapsed run time in milliseconds */
 	private double runIP(String model) {
 
 		StopWatch watch= new StopWatch();
+
 		watch.start();
-		Environment enviro= new Environment(Paths.get("AMPL").toString());
-		AMPL ampl= new AMPL(enviro);
 		try {
 			ampl.read(Paths.get("AMPL", "Models", model + ".mod").toString());
 			ampl.readData(Paths.get("AMPL", "Simulations", name, name + ".dat").toString());
-			ampl.setOption("solver", "gurobi");
-			ampl.solve();
 		} catch (Exception e) {
 			ampl.close();
 		}
+		ampl.solve();
+		assignmentsFromAMPL();
+		ampl.reset();
+		watch.stop();
 
+		return watch.getNanoTime() / 1000000.0;
+	}
+
+	// TODO: write method specification
+	private void assignmentsFromAMPL() {
 		for (Room room : rooms) {
 			for (Guest guest : guests) {
-				if (ampl.getValue("assign[" + room.getNumber() + "," + guest.getID() + "]").equals(1.0)) {
+				if (ampl.getVariable("assign").get(room.getNumber(), guest.getID()).value() == 1.0) {
 					assign(room, guest);
 					break;
 				}
 			}
 		}
-
-		ampl.close();
-		watch.stop();
-
-		return watch.getNanoTime() / 1000000.0;
 	}
 
 	/** Assigns the Guest guest to Room room and maintains the class invariant <br>
@@ -549,6 +623,61 @@ public class Simulation {
 			}
 			writer.write(" ;");
 			writer.close();
+
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	// TODO: Write method specification
+	private void convertToCSV() {
+
+		Collections.sort(rooms, new SortByRoomNumber());
+		Collections.sort(guests, new SortByGuestID());
+
+		File rooms= new File(Paths.get("AMPL", "Simulations", name, "rooms.csv").toString());
+		File guests= new File(Paths.get("AMPL", "Simulations", name, "guests.csv").toString());
+		FileWriter roomWriter= null;
+		FileWriter guestWriter= null;
+		try {
+
+			roomWriter= new FileWriter(rooms);
+			guestWriter= new FileWriter(guests);
+			roomWriter.write("number,type,attributes\n");
+			guestWriter.write("id,position,type,prefs\n");
+
+			for (Room room : this.rooms) {
+
+				roomWriter.write(room.getNumber() + "," + room.getType() + ",");
+				Iterator<String> iterator= room.getAttributes().iterator();
+				while (iterator.hasNext()) {
+					String attribute= iterator.next();
+					if (!iterator.hasNext()) {
+						roomWriter.write(attribute);
+					} else {
+						roomWriter.write(attribute + ":");
+					}
+				}
+				roomWriter.write("\n");
+			}
+
+			for (Guest guest : this.guests) {
+				guestWriter.write(guest.getID() + "," + guest.getArrivalPosition() + "," + guest.getType() + ",");
+
+				Iterator<String> iterator= guest.getPreferences().iterator();
+				while (iterator.hasNext()) {
+					String preferences= iterator.next();
+					if (!iterator.hasNext()) {
+						guestWriter.write(preferences);
+					} else {
+						guestWriter.write(preferences + ":");
+					}
+				}
+				guestWriter.write("\n");
+			}
+
+			roomWriter.close();
+			guestWriter.close();
 
 		} catch (IOException e) {
 			e.printStackTrace();

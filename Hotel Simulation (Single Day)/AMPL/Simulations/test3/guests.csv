@@ -1,6 +1,6 @@
-id, position, type, prefs
+id,position,type,prefs
 1,1,1,A:B:C
-2,2,1,D:C
+2,2,1,C:D
 3,3,2,A:C
 4,4,1,A:C:D
 5,5,2,A:B:C
