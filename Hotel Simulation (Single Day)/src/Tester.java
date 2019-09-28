@@ -1,5 +1,7 @@
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -109,7 +111,6 @@ class Tester {
 		for (Room room : rooms) {
 			test4+= g.getMetPreferences(room) + " ";
 		}
-		System.out.println(test4);
 		assertEquals("3 2 1 1 1 0 ", test4);
 
 		Collections.sort(guests, new Simulation.SortByGuestType());
@@ -136,7 +137,7 @@ class Tester {
 	}
 
 	@Test
-	void testSimulation() {
+	void threeTestCases() {
 
 		Simulation sim1= new Simulation("test1");
 		sim1.assignLinearly();
@@ -149,7 +150,7 @@ class Tester {
 		assertEquals(1, sim1.getMetPreferences());
 		assertEquals((double) 4 / 18, sim1.getAverageSatisfaction());
 		sim1.reset();
-		sim1.assignIP();
+		sim1.maximizeMetPreferences();
 		assertEquals(0, sim1.getTotalUpgrades());
 		assertEquals(1, sim1.getMetPreferences());
 		assertEquals((double) 2 / 9, sim1.getAverageSatisfaction());
@@ -165,7 +166,7 @@ class Tester {
 		assertEquals(6, sim2.getMetPreferences());
 		assertEquals((double) 2 / 3, sim2.getAverageSatisfaction());
 		sim2.reset();
-		sim2.assignIP();
+		sim2.maximizeMetPreferences();
 		assertEquals(2, sim2.getTotalUpgrades());
 		assertEquals(10, sim2.getMetPreferences());
 		assertEquals(0.9444444444444443, sim2.getAverageSatisfaction());
@@ -175,16 +176,113 @@ class Tester {
 		assertEquals(1, sim3.getTotalUpgrades());
 		assertEquals(8, sim3.getMetPreferences());
 		assertEquals((double) 19 / 36, sim3.getAverageSatisfaction());
+		assertEquals(0, sim3.getMinimumSatisfaction());
+		assertEquals(0, sim3.getMinimumPreferences());
 		sim3.reset();
 		sim3.assignLexicographically();
 		assertEquals(1, sim3.getTotalUpgrades());
 		assertEquals(11, sim3.getMetPreferences());
 		assertEquals(0.7499999999999999, sim3.getAverageSatisfaction());
+		assertEquals((double) 1 / 3, sim3.getMinimumSatisfaction());
+		assertEquals(1, sim3.getMinimumPreferences());
 		sim3.reset();
-		sim3.assignIP();
+		sim3.maximizeMetPreferences();
 		assertEquals(1, sim3.getTotalUpgrades());
 		assertEquals(13, sim3.getMetPreferences());
-		assertEquals(0.8611111111111112, sim3.getAverageSatisfaction());
+		assertEquals(0.861111111111111, sim3.getAverageSatisfaction());
+		assertEquals((double) 1 / 2, sim3.getMinimumSatisfaction());
+		assertEquals(1, sim3.getMinimumPreferences());
+
+	}
+
+	@Test
+	void exceptions() {
+
+		assertThrows(IllegalArgumentException.class, () -> { new Simulation("accommodation"); });
+		assertThrows(IllegalArgumentException.class, () -> { new Simulation("repeatRoom"); });
+		assertThrows(IllegalArgumentException.class, () -> { new Simulation("repeatArrival"); });
+		assertThrows(IllegalArgumentException.class, () -> { new Simulation("repeatID"); });
+
+	}
+
+	@Test
+	void randomConstructor() {
+
+		for (int i= 0; i < 25; i++ ) {
+
+			Simulation sim= new Simulation(25, "Tester");
+
+			double[][] results= new double[5][5];
+
+			sim.maximizeMetPreferences();
+			results[0][0]= sim.getMetPreferences();
+			results[0][1]= sim.getMinimumPreferences();
+			results[0][2]= sim.getAverageSatisfaction();
+			results[0][3]= sim.getMinimumSatisfaction();
+			results[0][4]= sim.getTotalUpgrades();
+			sim.reset();
+			sim.maximizeMinimumPreferences();
+			results[1][0]= sim.getMetPreferences();
+			results[1][1]= sim.getMinimumPreferences();
+			results[1][2]= sim.getAverageSatisfaction();
+			results[1][3]= sim.getMinimumSatisfaction();
+			results[1][4]= sim.getTotalUpgrades();
+			sim.reset();
+			sim.maximizeAverageSatisfaction();
+			results[2][0]= sim.getMetPreferences();
+			results[2][1]= sim.getMinimumPreferences();
+			results[2][2]= sim.getAverageSatisfaction();
+			results[2][3]= sim.getMinimumSatisfaction();
+			results[2][4]= sim.getTotalUpgrades();
+			sim.reset();
+			sim.maximizeMinimumSatisfaction();
+			results[3][0]= sim.getMetPreferences();
+			results[3][1]= sim.getMinimumPreferences();
+			results[3][2]= sim.getAverageSatisfaction();
+			results[3][3]= sim.getMinimumSatisfaction();
+			results[3][4]= sim.getTotalUpgrades();
+			sim.reset();
+			sim.minimizeUpgrades();
+			results[4][0]= sim.getMetPreferences();
+			results[4][1]= sim.getMinimumPreferences();
+			results[4][2]= sim.getAverageSatisfaction();
+			results[4][3]= sim.getMinimumSatisfaction();
+			results[4][4]= sim.getTotalUpgrades();
+
+			DecimalFormat df= new DecimalFormat("##.#####");
+
+			for (int j= 0; j < 5; j++ ) {
+				for (int k= 0; k < 5; k++ ) {
+					results[j][k]= Double.parseDouble(df.format(results[j][k]));
+				}
+			}
+
+			assertEquals(true, results[0][0] >= results[1][0]);
+			assertEquals(true, results[0][0] >= results[2][0]);
+			assertEquals(true, results[0][0] >= results[3][0]);
+			assertEquals(true, results[0][0] >= results[4][0]);
+
+			assertEquals(true, results[1][1] >= results[0][1]);
+			assertEquals(true, results[1][1] >= results[2][1]);
+			assertEquals(true, results[1][1] >= results[3][1]);
+			assertEquals(true, results[1][1] >= results[4][1]);
+
+			assertEquals(true, results[2][2] >= results[0][2]);
+			assertEquals(true, results[2][2] >= results[1][2]);
+			assertEquals(true, results[2][2] >= results[3][2]);
+			assertEquals(true, results[2][2] >= results[4][2]);
+
+			assertEquals(true, results[3][3] >= results[0][3]);
+			assertEquals(true, results[3][3] >= results[1][3]);
+			assertEquals(true, results[3][3] >= results[2][3]);
+			assertEquals(true, results[3][3] >= results[4][3]);
+
+			assertEquals(true, results[4][4] <= results[0][4]);
+			assertEquals(true, results[4][4] <= results[1][4]);
+			assertEquals(true, results[4][4] <= results[2][4]);
+			assertEquals(true, results[4][4] <= results[3][4]);
+
+		}
 
 	}
 

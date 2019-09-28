@@ -9,7 +9,7 @@ param satisfaction {ROOMS,GUESTS} >= 0;
 
 var assign {r in ROOMS, g in GUESTS} integer >= 0, <= 1;
 
-maximize Average_Satisfaction: sum {g in GUESTS, r in ROOMS} assign[r,g]*satisfaction[r,g];
+minimize Upgrades: sum {r in ROOMS, g in GUESTS} (assign[r,g]*roomType[r] - assign[r,g]*guestType[g]); 
 
 subject to One_Room_Per_Customer {g in GUESTS}:
 	sum {r in ROOMS} assign[r,g] = 1;
@@ -17,9 +17,5 @@ subject to One_Room_Per_Customer {g in GUESTS}:
 subject to Room_Capacity {r in ROOMS}:
 	sum {g in GUESTS} assign[r,g] <= 1;
 	
-subject to Type {g in GUESTS}: 
-	sum {r in ROOMS} assign[r,g]*roomType[r] >= guestType[g]; 
-
-	
-	
-	
+subject to Type {g in GUESTS, r in ROOMS}: 
+	assign[r,g]*roomType[r] >= assign[r,g]*guestType[g]; 

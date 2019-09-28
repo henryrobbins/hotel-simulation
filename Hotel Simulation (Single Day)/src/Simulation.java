@@ -1,8 +1,9 @@
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -20,7 +21,7 @@ import com.ampl.Environment;
 public class Simulation {
 
 	/** The name of the instance: the .dat file created upon instantiation will <br>
-	 * be of the form name.dat and placed in the version 2.0 AMPL folder */
+	 * be of the form name.dat and placed in the Simulations folder within AMPL folder */
 	private String name;
 	/** a list of rooms (must have unique room numbers and fully accommodate guests) */
 	private ArrayList<Room> rooms= new ArrayList<>();
@@ -34,15 +35,22 @@ public class Simulation {
 	private HashSet<Integer> guestIDs= new HashSet<>();
 	/** a set of all used arrival positions */
 	private HashSet<Integer> arrivalPositions= new HashSet<>();
-	/** the total number of preferences met for the current assignments */
+
+	// STATISTICS FIELDS
+
+	/** the total number of preferences met for the current assignment */
 	private int metPreferences= 0;
-	/** the total average satisfaction of guests for the current assignments */
-	private double averageSatisfaction= 0;
+	/** the minimum number of met preferences of a guest for the current room assignment */
+	private int minimumPreferences= 0;
+	/** the average satisfaction of guests for the current assignment */
+	private double averageSatisfaction= 0.0;
+	/** the minimum satisfaction of a guest for the current room assignment */
+	private double minimumSatisfaction= 0.0;
 	/** the total number of upgrades made in the current assignments */
 	private int totalUpgrades= 0;
 
 	/** Constructor: a new simulation with the list of rooms and guests associated <br>
-	 * with the corresponding CSV files within the given directory <br>
+	 * with the corresponding CSV files within the directory name <br>
 	 * A new .dat file is also created for use by AMPL with given name <br>
 	 * Precondition: the directory contains a rooms.csv file and a guests.csv file. <br>
 	 * Rooms have unique room numbers and guests have unique guest IDs <br>
@@ -51,25 +59,12 @@ public class Simulation {
 
 		this.name= name;
 
-		readRoomCSV(Paths.get("AMPL", "Simulations", name + "/rooms.csv").toString());
-		readGuestCSV(Paths.get("AMPL", "Simulations", name + "/guests.csv").toString());
+		readRoomCSV(Paths.get("AMPL", "Simulations", name, "rooms.csv"));
+		readGuestCSV(Paths.get("AMPL", "Simulations", name, "guests.csv"));
 
-		// Checks precondition that rooms can accommodate guests
-		Collections.sort(rooms, new SortByRoomTypeDescending());
-		Collections.sort(guests, new SortByGuestType());
-		for (int i= 0; i < guests.size(); i++ ) {
-			if (rooms.get(i).getType() < guests.get(i).getType()) {
-				System.out.println("CSV File Error: rooms can't accomodate guests");
-				System.exit(0);
-			}
-		}
+		if (!canAccommodate()) { throw new IllegalArgumentException("CSV File Error: rooms can't accomodate guests"); }
 
-		convert();
-
-		for (Room room : rooms) {
-			assignments.put(room, null);
-		}
-
+		finishInstantiation();
 	}
 
 	/** Constructor: a new simulation with n rooms of randomly generated types and <br>
@@ -80,8 +75,6 @@ public class Simulation {
 
 		this.name= name;
 
-		boolean feasible= false;
-
 		int[] roomTypes= new int[] { 1, 2, 3, 4, 5, 6, 7 };
 		double[] roomProbabilities= new double[] { 0.25, 0.25, 0.15, 0.15, 0.10, 0.09, 0.01 };
 		double[] requestProbabilities= new double[] { 0.28, 0.27, 0.18, 0.17, 0.05, 0.04, 0.01 };
@@ -91,6 +84,8 @@ public class Simulation {
 
 		EnumeratedIntegerDistribution requestDistribution= new EnumeratedIntegerDistribution(roomTypes,
 			requestProbabilities);
+
+		boolean feasible= false;
 
 		while (!feasible) {
 
@@ -105,24 +100,69 @@ public class Simulation {
 				guests.add(new Guest(i, i, requestDistribution.sample(1)[0], getRandAttributes()));
 			}
 
-			Collections.sort(rooms, new SortByRoomTypeDescending());
-			Collections.sort(guests, new SortByGuestType());
+			feasible= canAccommodate();
+		}
 
-			// Checks precondition that rooms can accommodate guests
-			for (int i= 0; i < guests.size(); i++ ) {
-				if (rooms.get(i).getType() < guests.get(i).getType()) {
-					feasible= false;
-					break;
-				}
-				feasible= true;
+		System.out.println(guests.size());
+
+		try {
+			Files.createDirectories(Paths.get("AMPL", "Simulations", name));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+		finishInstantiation();
+	}
+
+	/** Generate a random number from a binomial distribution ~B(n,p) */
+	private static int getBinomial(int n, double p) {
+		int x= 0;
+		for (int i= 0; i < n; i++ ) {
+			if (Math.random() < p)
+				x++ ;
+		}
+		return x;
+	}
+
+	/** Generate random list of attributes / preferences */
+	private static HashSet<String> getRandAttributes() {
+
+		HashSet<String> set= new HashSet<>();
+
+		String[] attributes= { "A", "B", "C", "D", "E", "F", "G", "H", "I", "J" };
+		double[] probabilities= { 0.4, 0.4, 0.4, 0.4, 0.3, 0.3, 0.3, 0.2, 0.2, 0.1 };
+
+		for (int i= 0; i < 10; i++ ) {
+			if (Math.random() < probabilities[i]) {
+				set.add(attributes[i]);
 			}
 		}
 
-		convert();
+		return set;
+	}
 
+	/** Returns true iff the current rooms list can accommodate ALL guests in guests list */
+	private boolean canAccommodate() {
+
+		Collections.sort(rooms, new SortByRoomTypeDescending());
+		Collections.sort(guests, new SortByGuestType());
+
+		for (int i= 0; i < guests.size(); i++ ) {
+			if (rooms.get(i).getType() < guests.get(i).getType()) { return false; }
+		}
+		return true;
+	}
+
+	/** This code should be run at the end of ALL constructors */
+	private void finishInstantiation() {
+
+		// create name.dat file for use by AMPL
+		convert();
+		// make invariant hold true for assignments field
 		for (Room room : rooms) {
 			assignments.put(room, null);
 		}
+
 	}
 
 	// GETTERS FOR STATISTICS
@@ -132,14 +172,37 @@ public class Simulation {
 		return metPreferences;
 	}
 
-	/** Returns the average guest satisfaction for the current room assignment */
+	/** Returns the minimum number of preferences met for the current room assignment */
+	public int getMinimumPreferences() {
+		return minimumPreferences;
+	}
+
+	/** Returns the average satisfaction for the current room assignment */
 	public double getAverageSatisfaction() {
 		return averageSatisfaction;
+	}
+
+	/** Returns minimum satisfaction of a guest for the current room assignment */
+	public double getMinimumSatisfaction() {
+		return minimumSatisfaction;
 	}
 
 	/** Returns the total number of upgrades for the current room assignment */
 	public int getTotalUpgrades() {
 		return totalUpgrades;
+	}
+
+	/** Prints a report of statistics for current room assignments */
+	public void printStats() {
+
+		System.out.println("STATISTICS");
+		System.out.println("Met Preferences: " + metPreferences);
+		System.out.println("Minimum Met Preferences: " + minimumPreferences);
+		System.out.println("Average Satisfaction: " + averageSatisfaction);
+		System.out.println("Minimum Satisfaction: " + minimumSatisfaction);
+		System.out.println("Total Upgrades: " + totalUpgrades);
+		System.out.println();
+
 	}
 
 	// ROOM ASSIGNMENT ALGORITHMS
@@ -160,7 +223,9 @@ public class Simulation {
 			}
 		}
 		watch.stop();
-		return watch.getNanoTime() / 1000000;
+		System.out.println("Linearly");
+		printStats();
+		return watch.getNanoTime() / 1000000.0;
 	}
 
 	/** Makes a valid room assignment by assigning guests to the room of the minimum <br>
@@ -184,96 +249,130 @@ public class Simulation {
 			}
 		}
 		watch.stop();
-		return watch.getNanoTime() / 1000000;
+		System.out.println("Lexicographically");
+		printStats();
+		return watch.getNanoTime() / 1000000.0;
 	}
 
-	/** Using the hard-coded model.mod file and the .dat file associated with this <br>
-	 * instance of Simulation, makes a room assignment optimizing total met preferences <br>
-	 * with the only constraint being requested room type <br>
-	 * Additionally, returns the elapsed time in milliseconds */
-	public double assignIP() {
+	/** Updates the current assignment such that the total number of met preferences <br>
+	 * met is maximized and returns elapsed run time in milliseconds */
+	public double maximizeMetPreferences() {
+		double runTime= runIP("maxMetPrefs");
+		System.out.println("Max Met Preferences");
+		printStats();
+		return runTime;
+	}
+
+	/** Updates the current assignment such that the minimum number of met preferences <br>
+	 * for a guest is maximized and returns elapsed run time in milliseconds */
+	public double maximizeMinimumPreferences() {
+		double runTime= runIP("maxMinimumPreferences");
+		System.out.println("Max Minimum Preferences");
+		printStats();
+		return runTime;
+	}
+
+	/** Updates the current assignment such that the average satisfaction <br>
+	 * is maximized and returns elapsed run time in milliseconds */
+	public double maximizeAverageSatisfaction() {
+		double runTime= runIP("maxAverageSatisfaction");
+		System.out.println("Max Average Satisfaction");
+		printStats();
+		return runTime;
+	}
+
+	/** Updates the current assignment such that the minimum satisfaction <br>
+	 * for a guest is maximized and returns elapsed run time in milliseconds */
+	public double maximizeMinimumSatisfaction() {
+		double runTime= runIP("maxMinimumSatisfaction");
+		System.out.println("Max Minimum Satisfaction");
+		printStats();
+		return runTime;
+	}
+
+	/** Updates the current assignment such that the number of upgrades made <br>
+	 * is minimized and returns elapsed run time in milliseconds */
+	public double minimizeUpgrades() {
+		double runTime= runIP("minUpgrades");
+		System.out.println("Minimize Upgrades");
+		printStats();
+		return runTime;
+	}
+
+	/** Creates an instance of AMPL and uses it to solve an IP yielding a valid room <br>
+	 * assignment from the given model and the .dat file in the directory name <br>
+	 * returns elapsed run time in milliseconds */
+	private double runIP(String model) {
 
 		StopWatch watch= new StopWatch();
-
 		watch.start();
 		Environment enviro= new Environment(Paths.get("AMPL").toString());
 		AMPL ampl= new AMPL(enviro);
 		try {
-			ampl.read(Paths.get("AMPL", "Models", "maxAverageSatisfaction.mod").toString());
+			ampl.read(Paths.get("AMPL", "Models", model + ".mod").toString());
 			ampl.readData(Paths.get("AMPL", "Simulations", name, name + ".dat").toString());
 			ampl.setOption("solver", "gurobi");
 			ampl.solve();
-			metPreferences= (int) ampl.getVariable("totalMetPreferences").value();
-			averageSatisfaction= ampl.getVariable("totalAverageSatisfaction").value() / guests.size();
-			totalUpgrades= (int) ampl.getVariable("upgrades").value();
 		} catch (Exception e) {
 			ampl.close();
 		}
+
+		for (Room room : rooms) {
+			for (Guest guest : guests) {
+				if (ampl.getValue("assign[" + room.getNumber() + "," + guest.getID() + "]").equals(1.0)) {
+					assign(room, guest);
+					break;
+				}
+			}
+		}
+
 		ampl.close();
 		watch.stop();
 
-		return watch.getNanoTime() / 1000000;
-	}
-
-	/** Prints a report of statistics for current room assignments */
-	public void printStats() {
-
-		System.out.println("STATISTICS");
-		System.out.println("Total Upgrades: " + totalUpgrades);
-		System.out.println("Total Satisfaction: " + metPreferences);
-		System.out.println("Average Satisfaction: " + averageSatisfaction);
-		System.out.println();
-
-	}
-
-	/** Resets the room assignments */
-	public void reset() {
-		metPreferences= 0;
-		averageSatisfaction= 0;
-		totalUpgrades= 0;
-		assignments.clear();
-		for (Room room : rooms) {
-			assignments.put(room, null);
-		}
+		return watch.getNanoTime() / 1000000.0;
 	}
 
 	/** Assigns the Guest guest to Room room and maintains the class invariant <br>
-	 * for the three statistics fields: total and average satisfaction and upgrades <br>
+	 * for all of the statistics fields <br>
 	 * Precondition: room has no guest and vice versa */
 	private void assign(Room room, Guest guest) {
 		assert assignments.get(room) == null;
 		assert !assignments.containsValue(guest);
-		assignments.put(room, guest);
+
 		metPreferences+= guest.getMetPreferences(room);
 		averageSatisfaction+= guest.getAverageSatisfaction(room) / guests.size();
 		totalUpgrades+= room.getType() - guest.getType();
-	}
 
-	/** Generate a random number from a binomial distribution ~B(n,p) */
-	private static int getBinomial(int n, double p) {
-		int x= 0;
-		for (int i= 0; i < n; i++ ) {
-			if (Math.random() < p)
-				x++ ;
-		}
-		return x;
-	}
-
-	/** Generate random list of attributes / preferences */
-	private static HashSet<String> getRandAttributes() {
-
-		HashSet<String> set= new HashSet<>();
-
-		String[] attributes= { "A", "B", "C", "D", "E", "F", "G", "H", "I", "J" };
-		double[] probabilities= { 0.4, 0.4, 0.4, 0.4, 0.3, 0.3, 0.3, 0.2, 0.2, 0.1 };
-
-		for (int i= 0; i < 10; i++ ) {
-			if (Math.random() > probabilities[i]) {
-				set.add(attributes[i]);
-			}
+		if (assignmentEmpty()) {
+			minimumSatisfaction= guest.getAverageSatisfaction(room);
+			minimumPreferences= guest.getMetPreferences(room);
+		} else {
+			minimumSatisfaction= Math.min(minimumSatisfaction, guest.getAverageSatisfaction(room));
+			minimumPreferences= Math.min(minimumPreferences, guest.getMetPreferences(room));
 		}
 
-		return set;
+		assignments.put(room, guest);
+	}
+
+	/** Returns true iff there are currently no guests assigned to a room */
+	private boolean assignmentEmpty() {
+		for (Room room : rooms) {
+			if (assignments.get(room) != null) return false;
+		}
+		return true;
+	}
+
+	/** Resets the room assignments */
+	public void reset() {
+		assignments.clear();
+		for (Room room : rooms) {
+			assignments.put(room, null);
+		}
+		metPreferences= 0;
+		minimumPreferences= 0;
+		averageSatisfaction= 0.0;
+		minimumSatisfaction= 0.0;
+		totalUpgrades= 0;
 	}
 
 	// CSV FILE READER METHODS
@@ -283,11 +382,10 @@ public class Simulation {
 	 * unique room number, room type, attributes <br>
 	 * EX: 1, 2, A:B:C <br>
 	 * Precondition: Every room number in the CSV file is unique */
-	private void readRoomCSV(String roomsCSV) {
+	private void readRoomCSV(Path path) {
 
-		BufferedReader br= null;
 		try {
-			br= new BufferedReader(new FileReader(roomsCSV));
+			BufferedReader br= Files.newBufferedReader(path);
 
 			// Essentially skips first line (HEADER)
 			String contentLine= br.readLine();
@@ -315,14 +413,14 @@ public class Simulation {
 				if (!roomNumbers.contains(num)) {
 					roomNumbers.add(num);
 				} else {
-					System.out.println("CSV File Error: repeat room number");
-					System.exit(0);
+					throw new IllegalArgumentException("CSV File Error: repeat room number");
 				}
 
 				// Add guest to the list of guests
 				rooms.add(new Room(num, type, attributes));
 				contentLine= br.readLine();
 			}
+			br.close();
 		} catch (IOException ioe) {
 			ioe.printStackTrace();
 		}
@@ -333,11 +431,10 @@ public class Simulation {
 	 * unique ID, unique arrival position, requested type, preferences <br>
 	 * EX: 1,1,1,A:B:C <br>
 	 * Precondition: Every guestId and arrival position in the CSV file is unique */
-	private void readGuestCSV(String guestsCSV) {
+	private void readGuestCSV(Path path) {
 
-		BufferedReader br= null;
 		try {
-			br= new BufferedReader(new FileReader(guestsCSV));
+			BufferedReader br= Files.newBufferedReader(path);
 
 			// Essentially skips first line (HEADER)
 			String contentLine= br.readLine();
@@ -368,33 +465,23 @@ public class Simulation {
 				if (!guestIDs.contains(id)) {
 					guestIDs.add(id);
 				} else {
-					System.out.println("CSV File Error: repeat guest ID");
-					System.exit(0);
+					throw new IllegalArgumentException("CSV File Error: repeat guest ID");
 				}
 
 				// Checks precondition and updates sets of arrival positions
 				if (!arrivalPositions.contains(position)) {
 					arrivalPositions.add(position);
 				} else {
-					System.out.println("CSV File Error: repeat guest arrival position");
-					System.exit(0);
+					throw new IllegalArgumentException("CSV File Error: repeat guest arrival position");
 				}
 
 				// Add guest to the list of guests
 				guests.add(new Guest(id, position, type, preferences));
 				contentLine= br.readLine();
 			}
-		} catch (
-
-		IOException ioe) {
+			br.close();
+		} catch (IOException ioe) {
 			ioe.printStackTrace();
-		} finally {
-			try {
-				if (br != null)
-					br.close();
-			} catch (IOException ioe) {
-				System.out.println("Error in closing the BufferedReader");
-			}
 		}
 	}
 
@@ -404,7 +491,7 @@ public class Simulation {
 		Collections.sort(rooms, new SortByRoomNumber());
 		Collections.sort(guests, new SortByGuestID());
 
-		File file= new File("/Users/Henry/Hotel Research/AMPL/Hotel Simulation (Single Day) 2.0/" + name + ".dat");
+		File file= new File(Paths.get("AMPL", "Simulations", name, name + ".dat").toString());
 		FileWriter writer= null;
 		try {
 
@@ -436,12 +523,6 @@ public class Simulation {
 			}
 			writer.write(" ;\n \n");
 
-			writer.write("param: totalPreferences :=");
-			for (Guest guest : guests) {
-				writer.write("\n" + guest.getID() + " " + guest.getPreferences().size());
-			}
-			writer.write(" ;\n \n");
-
 			writer.write("param metPreferences: \n  ");
 			for (Guest guest : guests) {
 				writer.write(guest.getID() + " ");
@@ -453,14 +534,24 @@ public class Simulation {
 					writer.write(guest.getMetPreferences(room) + " ");
 				}
 			}
+			writer.write(" ;\n \n");
+
+			writer.write("param satisfaction: \n  ");
+			for (Guest guest : guests) {
+				writer.write(guest.getID() + " ");
+			}
+			writer.write(" :=");
+			for (Room room : rooms) {
+				writer.write("\n" + room.getNumber() + " ");
+				for (Guest guest : guests) {
+					writer.write(guest.getAverageSatisfaction(room) + " ");
+				}
+			}
 			writer.write(" ;");
+			writer.close();
 
 		} catch (IOException e) {
 			e.printStackTrace();
-		} finally {
-			if (writer != null) try {
-				writer.close();
-			} catch (IOException ignore) {}
 		}
 	}
 
