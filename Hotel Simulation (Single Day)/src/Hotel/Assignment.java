@@ -88,14 +88,14 @@ public class Assignment {
 		assert !assignment.containsValue(guest);
 
 		metPreferences+= guest.getMetPreferences(room);
-		averageSatisfaction+= guest.getAverageSatisfaction(room) / guests.size();
+		averageSatisfaction+= guest.getSatisfaction(room) / guests.size();
 		totalUpgrades+= room.getType() - guest.getType();
 
 		if (assignmentEmpty()) {
-			minimumSatisfaction= guest.getAverageSatisfaction(room);
+			minimumSatisfaction= guest.getSatisfaction(room);
 			minimumPreferences= guest.getMetPreferences(room);
 		} else {
-			minimumSatisfaction= Math.min(minimumSatisfaction, guest.getAverageSatisfaction(room));
+			minimumSatisfaction= Math.min(minimumSatisfaction, guest.getSatisfaction(room));
 			minimumPreferences= Math.min(minimumPreferences, guest.getMetPreferences(room));
 		}
 

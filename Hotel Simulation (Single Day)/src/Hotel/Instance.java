@@ -7,56 +7,99 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.Iterator;
 
-/** An instance maintains a list of hotel rooms and a list of guests arriving for a <br>
- * single day horizon. Essentially maintains all data needed for the AMPL .dat file */
-public class Instance {
+/** Maintains an immutable list of hotel rooms and guests arriving for a single <br>
+ * day horizon. Additionally, stores the size of the housekeeping team. */
+public final class Instance {
 
-	/** a list of rooms (must have unique room numbers and fully accommodate guests) */
-	private ArrayList<Room> rooms= new ArrayList<>();
-	/** a list of guests (must have unique guestIDs and arrival positions) */
-	private ArrayList<Guest> guests= new ArrayList<>();
+	/** The list of hotel rooms (must have unique room numbers and fully accommodate guests) */
+	private final ArrayList<Room> rooms;
+	/** The list of guests (must have unique guestIDs) */
+	private final ArrayList<Guest> guests;
+	/** The size of the housekeeping team (must be greater than 0) */
+	private final int housekeeperSize;
 
-	// GETTERS
-
-	/** Returns an ArrayList of Rooms in the hotel */
+	/** Returns the list of rooms in the hotel */
 	public ArrayList<Room> getRooms() {
-		return rooms;
+		return new ArrayList<>(rooms);
 	}
 
-	/** Returns an ArrayList of Guests arriving over a single day horizon */
+	/** Returns the list of guests arriving on this single day horizon */
 	public ArrayList<Guest> getGuests() {
-		return guests;
+		return new ArrayList<>(guests);
 	}
 
-	/** Builder class helps to create the immutable Instance */
+	/** Returns the size of the housekeeping team */
+	public int getNumOfHousekeepers() {
+		return housekeeperSize;
+	}
+
+	/** Returns the number of room types in this instance */
+	public int getTypeSize() {
+		HashSet<Integer> types= new HashSet<>();
+		for (Room room : rooms) {
+			int type= room.getType();
+			if (!types.contains(type)) {
+				types.add(type);
+			}
+		}
+		return types.size();
+	}
+
+	/** Builder class used to create the immutable Instance */
 	public static class Builder {
 
 		/** the name of the instance (for CSV file access and naming purposes) */
-		private final String instanceName;
-		/** a list of rooms (must have unique room numbers and fully accommodate guests) */
+		private String instanceName;
+		/** The list of hotel rooms (must have unique room numbers and fully accommodate guests) */
 		private ArrayList<Room> rooms= new ArrayList<>();
-		/** a list of guests (must have unique guestIDs and arrival positions) */
+		/** The set of used room numbers (to verify uniqueness) */
+		private HashSet<Integer> usedRoomNumbers= new HashSet<>();
+		/** The list of guests (must have unique guestIDs) */
 		private ArrayList<Guest> guests= new ArrayList<>();
+		/** The set of used guest IDs (to verify uniqueness) */
+		private HashSet<Integer> usedGuestIds= new HashSet<>();
+		/** The size of the housekeeping team (must be greater than 1) */
+		private int housekeeperSize;
 
-		// SETTERS
-
-		public Builder(String instanceName) {
-			this.instanceName= instanceName;
+		/** Construct a Builder with given name and h housekeepers
+		 *
+		 * @param name The name of the instance (not null and at least one character)
+		 * @param h    The size of the housekeeping team (greater than 1) */
+		public Builder(String name, int h) {
+			if (name == null || name.length() < 1) throw new IllegalArgumentException("Name less than one character");
+			if (h < 1) throw new IllegalArgumentException("The housekeeping team has a size less than 1");
+			instanceName= name;
+			housekeeperSize= h;
 		}
 
+		/** Add the given room to the list
+		 *
+		 * @param room A room to be added (with unique room number) */
 		public Builder addRoom(Room room) {
+			int num= room.getNumber();
+			if (usedRoomNumbers.contains(num)) throw new IllegalArgumentException("Non-unique room number");
 			rooms.add(room);
+			usedRoomNumbers.add(num);
 			return this;
 		}
 
+		/** Add the given guest to the list
+		 *
+		 * @param guest A guest to be added (with unique guest ID) */
 		public Builder addGuest(Guest guest) {
+			int id= guest.getID();
+			if (usedGuestIds.contains(id)) throw new IllegalArgumentException("Non-unique guest ID");
 			guests.add(guest);
+			usedGuestIds.add(id);
 			return this;
 		}
 
-		/** Returns true iff the current rooms list can accommodate ALL guests in guests list */
+		/** Return true if the current list of rooms can accommodate all guests in the list of <br>
+		 * guests; false otherwise. In other words, every guest can be assigned to a room of a <br>
+		 * type satisfying their request. */
 		public boolean canAccommodate() {
 
 			Collections.sort(rooms, Comparator.comparingInt(Room::getType).reversed());
@@ -68,7 +111,7 @@ public class Instance {
 			return true;
 		}
 
-		/** creates associated CSV files in Simulations file in folder named (instanceName) */
+		/** Creates an associated CSV file in the Simulations folder named (instanceName) */
 		public void convertToCSV() {
 
 			Collections.sort(rooms, Comparator.comparingInt(Room::getNumber));
@@ -82,12 +125,13 @@ public class Instance {
 
 				roomWriter= new FileWriter(rooms);
 				guestWriter= new FileWriter(guests);
-				roomWriter.write("number,type,attributes\n");
-				guestWriter.write("id,position,type,prefs\n");
+				roomWriter.write("number,type,check-out,cleanTime,attributes\n");
+				guestWriter.write("id,type,arrival,prefs\n");
 
 				for (Room room : this.rooms) {
 
-					roomWriter.write(room.getNumber() + "," + room.getType() + ",");
+					roomWriter.write(room.getNumber() + "," + room.getType() + "," + room.getCheckOut() + "," +
+						room.getCleanTime() + ",");
 					Iterator<String> iterator= room.getAttributes().iterator();
 					while (iterator.hasNext()) {
 						String attribute= iterator.next();
@@ -101,7 +145,7 @@ public class Instance {
 				}
 
 				for (Guest guest : this.guests) {
-					guestWriter.write(guest.getID() + "," + guest.getArrivalPosition() + "," + guest.getType() + ",");
+					guestWriter.write(guest.getID() + "," + guest.getType() + "," + guest.getArrivalTime() + ",");
 
 					Iterator<String> iterator= guest.getPreferences().iterator();
 					while (iterator.hasNext()) {
@@ -123,18 +167,23 @@ public class Instance {
 			}
 		}
 
+		/** Construct an Instance instance from this Builder instance */
 		public Instance build() {
-			return new Instance(rooms, guests);
+			return new Instance(rooms, guests, housekeeperSize);
 		}
 	}
 
-	/** Constructor: creates an instance with the respective rooms and guests ArrayLists */
-	private Instance(ArrayList<Room> rooms, ArrayList<Guest> guests) {
-		this.rooms= new ArrayList<>(rooms); // create a copy of rooms to guarantee immutability
+	/** Construct an instance with the respective list of rooms, guests, and housekeeping team size
+	 *
+	 * @param rooms  The list of rooms in this instance (unique room numbers)
+	 * @param guests The list of guest in this instance (unique guest IDs)
+	 * @param h      The size of the housekeeping team (greater than 0) */
+	private Instance(ArrayList<Room> rooms, ArrayList<Guest> guests, int h) {
+		this.rooms= new ArrayList<>(rooms);
 		this.guests= new ArrayList<>(guests);
+		housekeeperSize= h;
 	}
 
-	/** Checks to see if two instances have the same set of guests and rooms (in any order) */
 	@Override
 	public boolean equals(Object ob) {
 		if (ob == null) return false;
@@ -149,17 +198,30 @@ public class Instance {
 		return true;
 	}
 
+	/** Return a string representing this instance */
 	@Override
 	public String toString() {
-		System.out.println("ROOMS");
+		StringBuilder sb= new StringBuilder();
+		sb.append("----------------------------------------------------------------\n");
+		sb.append("ROOM\t" + "TYPE\t" + "CHECKOUT\t" + "CLEAN TIME\t" + "ATTRIBUTES\n");
 		for (Room room : rooms) {
-			System.out.println(room);
+			sb.append(String.format("%-4d \t", room.getNumber()));
+			sb.append(String.format("%-4d \t", room.getType()));
+			sb.append(String.format("%-7d \t", room.getCheckOut()));
+			sb.append(String.format("%-9d \t", room.getCleanTime()));
+			sb.append(room.getAttributes() + "\n");
 		}
-		System.out.println();
-		System.out.println("GUESTS");
+		sb.append("----------------------------------------------------------------\n");
+		sb.append("-----------------------------------------\n");
+		sb.append("GUEST\t" + "TYPE\t" + "ARRIVAL\t" + "PREFERENCES \n");
 		for (Guest guest : guests) {
-			System.out.println(guest);
+			sb.append(String.format("%-5d \t", guest.getID()));
+			sb.append(String.format("%-4d \t", guest.getType()));
+			sb.append(String.format("%-6d \t", guest.getArrivalTime()));
+			sb.append(guest.getPreferences() + "\n");
 		}
-		return "DONE";
+		sb.append("-----------------------------------------\n");
+		sb.append("Housekeeping Team Size: " + housekeeperSize + "\n");
+		return sb.toString();
 	}
 }

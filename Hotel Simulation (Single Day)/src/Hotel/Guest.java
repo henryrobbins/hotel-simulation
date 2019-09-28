@@ -2,50 +2,63 @@ package Hotel;
 
 import java.util.HashSet;
 
-/** An instance maintains information about a hotel guest */
+/** Maintains information about an individual guest. This includes an ID associated with <br>
+ * the guest, the time interval in which they arrive, the type of room they are requesting, <br>
+ * and a set of their preferences which correspond to hotel room attributes. */
 public class Guest {
 
-	/** a guest ID (at least 1) */
+	/** This guest's ID (at least 1) */
 	private int id;
-	/** the position in which this guest arrives (at least 1) */
-	private int position;
-	/** the requested room type (at least 1) */
+	/** The room type this guest is requesting (at least 1) */
 	private int type;
-	/** the preferences of this guest (empty if none) */
-	private HashSet<String> preferences= new HashSet<>();
+	/** The time interval in which this guest arrives (at least 0) */
+	private int arrivalTime;
+	/** This guest's set of preferences (not null - empty if no preferences) */
+	private HashSet<String> preferences;
 
-	/** Constructor: a guest with ID id, arrival position p, requested room <br>
-	 * type t, and preferences pref <br>
-	 * Precondition: id > 0, p > 0, t > 0, pref is not null */
-	public Guest(int id, int p, int t, HashSet<String> pref) {
+	/** Construct a guest with the specified ID, arrival time, requested room type, and preferences
+	 *
+	 * @param id          This guest's ID (id > 0)
+	 * @param type        The type of room this guest is requesting (t > 0)
+	 * @param arrivalTime The time interval in which this guest arrives (a >= 0)
+	 * @param preferences This guest's set of preferences (not null - empty if no preferences) */
+	public Guest(int id, int type, int arrivalTime, HashSet<String> preferences) {
+		if (id < 1) throw new IllegalArgumentException("Guest ID less than 1");
+		if (arrivalTime < 0) throw new IllegalArgumentException("Arrival time less than 0");
+		if (type < 1) throw new IllegalArgumentException("Requested type less than 1");
+		if (preferences == null) throw new IllegalArgumentException("The set of preferences was null");
 		this.id= id;
-		position= p;
-		type= t;
-		preferences= pref;
+		this.type= type;
+		this.arrivalTime= arrivalTime;
+		this.preferences= preferences;
 	}
 
-	/** Return guest's ID */
+	/** Return this guest's ID */
 	public int getID() {
 		return id;
 	}
 
-	/** Return guest's arrival position */
-	public int getArrivalPosition() {
-		return position;
+	/** Return the time interval in which this guest arrives */
+	public int getArrivalTime() {
+		return arrivalTime;
 	}
 
-	/** Return guest's requested room type */
+	/** Return this guest's requested room type */
 	public int getType() {
 		return type;
 	}
 
-	/** Return guest's preferences */
+	/** Return this guest's set of preferences */
 	public HashSet<String> getPreferences() {
 		return preferences;
 	}
 
-	/** Return the total number of preferences the Room room meets for this guest */
+	/** Return the total number of preferences the room meets for this guest
+	 *
+	 * @param room A room in the hotel (not null)
+	 * @return the number of met preferences */
 	public int getMetPreferences(Room room) {
+		if (room == null) throw new IllegalArgumentException("Room is null");
 		int total= 0;
 		for (String pref : preferences) {
 			if (room.getAttributes().contains(pref)) {
@@ -55,36 +68,52 @@ public class Guest {
 		return total;
 	}
 
-	/** Return the percent of preferences the Room room meets for this guest */
-	public double getAverageSatisfaction(Room room) {
-
+	/** Return the percent of preferences the room meets for this guest. If the guest <br>
+	 * has no preferences, the satisfaction is automatically 100%.
+	 *
+	 * @param room A room in the hotel (not null)
+	 * @return the satisfaction of this guest with room */
+	public double getSatisfaction(Room room) {
+		if (room == null) throw new IllegalArgumentException("Room is null");
 		if (preferences.size() == 0) { return 1; }
-
-		int total= 0;
-		for (String pref : preferences) {
-			if (room.getAttributes().contains(pref)) {
-				total++ ;
-			}
-		}
-		return (double) total / preferences.size();
+		return (double) getMetPreferences(room) / (double) preferences.size();
 	}
 
-	/** Checks to see if two guests have the same id, position, type, and attributes */
+	/** Return the amount of overlap (wait time) between this guest and the given room <br>
+	 * assuming that the provided housekeeping schedule is used.
+	 *
+	 * @param room     A room in the hotel (not null)
+	 * @param schedule A housekeeping schedule (not null)
+	 * @return the amount of overlap (wait time) */
+	public int getOverlap(Room room, HousekeepingSchedule schedule) {
+		if (room == null) throw new IllegalArgumentException("Room is null");
+		if (schedule == null) throw new IllegalArgumentException("Schedule is null");
+		return Math.max(0, room.getAvailability(schedule) - arrivalTime);
+	}
+
+	/** Returns true if the specified object is the same as this guest */
 	@Override
 	public boolean equals(Object ob) {
 		if (ob == null) return false;
 		if (ob.getClass() != Guest.class) return false;
 		Guest guest= (Guest) ob;
 		if (id != guest.id) return false;
-		if (position != guest.position) return false;
+		if (arrivalTime != guest.arrivalTime) return false;
 		if (type != guest.type) return false;
 		if (!preferences.equals(guest.preferences)) return false;
 		return true;
 	}
 
-	/** Return this guest as a string with its information */
+	/** Return this guest's ID as a String */
 	@Override
 	public String toString() {
-		return "Guest " + id + ": Type: " + type + ", Preferences: " + preferences.toString();
+//		Previous implementation
+//		StringBuilder sb= new StringBuilder();
+//		sb.append("Guest: " + id + ", ");
+//		sb.append("Type: " + type + ", ");
+//		sb.append("Arrival Time: " + arrivalTime + ", ");
+//		sb.append("Preferences: " + preferences);
+//		return sb.toString();
+		return String.valueOf(id);
 	}
 }

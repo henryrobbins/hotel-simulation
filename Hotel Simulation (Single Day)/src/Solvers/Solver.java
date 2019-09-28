@@ -1,12 +1,15 @@
 package Solvers;
 
-import Hotel.Assignment;
 import Hotel.Instance;
+import Hotel.Solution;
 
-/** A Solver that makes hotel room assignments for a given Instance */
+/** A solver that returns both a housekeeping schedule and room assignment */
 public interface Solver {
 
-	/** Returns an Assignment for an Instance */
-	Assignment solve(Instance instance);
+	/** Return a solution containing a housekeeping schedule and room assignment for an instance
+	 *
+	 * @param instance The instance to generate a housekeeping schedule <br>
+	 *                 and room assignment for (not null) */
+	Solution solve(Instance instance);
 
 }
