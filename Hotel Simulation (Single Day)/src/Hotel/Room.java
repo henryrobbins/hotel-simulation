@@ -1,3 +1,5 @@
+package Hotel;
+
 import java.util.HashSet;
 
 /** An instance maintains information about a hotel room */
@@ -31,6 +33,18 @@ public class Room {
 	/** Return this room's attributes */
 	public HashSet<String> getAttributes() {
 		return attributes;
+	}
+
+	/** Checks to see if two rooms have the same number, type, and attributes */
+	@Override
+	public boolean equals(Object ob) {
+		if (ob == null) return false;
+		if (ob.getClass() != Room.class) return false;
+		Room room= (Room) ob;
+		if (number != room.number) return false;
+		if (type != room.type) return false;
+		if (!attributes.equals(room.attributes)) return false;
+		return true;
 	}
 
 	/** Return this room as a string with its information */

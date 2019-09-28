@@ -1,3 +1,5 @@
+package Hotel;
+
 import java.util.HashSet;
 
 /** An instance maintains information about a hotel guest */
@@ -65,6 +67,19 @@ public class Guest {
 			}
 		}
 		return (double) total / preferences.size();
+	}
+
+	/** Checks to see if two guests have the same id, position, type, and attributes */
+	@Override
+	public boolean equals(Object ob) {
+		if (ob == null) return false;
+		if (ob.getClass() != Guest.class) return false;
+		Guest guest= (Guest) ob;
+		if (id != guest.id) return false;
+		if (position != guest.position) return false;
+		if (type != guest.type) return false;
+		if (!preferences.equals(guest.preferences)) return false;
+		return true;
 	}
 
 	/** Return this guest as a string with its information */
