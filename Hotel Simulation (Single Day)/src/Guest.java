@@ -43,7 +43,7 @@ public class Guest {
 	}
 
 	/** Return the total number of preferences the Room room meets for this guest */
-	public int getTotalSatisfaction(Room room) {
+	public int getMetPreferences(Room room) {
 		int total= 0;
 		for (String pref : preferences) {
 			if (room.getAttributes().contains(pref)) {
@@ -54,7 +54,7 @@ public class Guest {
 	}
 
 	/** Return the percent of preferences the Room room meets for this guest */
-	public double getPercentSatisfaction(Room room) {
+	public double getAverageSatisfaction(Room room) {
 
 		if (preferences.size() == 0) { return 1; }
 

@@ -1,19 +1,21 @@
-
 public class Main {
 
 	public static void main(String[] args) {
 
-		Simulation sim= new Simulation("roomTest3.csv", "guestTest3.csv");
+		// int[] roomNumbers= { 10, 100, 200, 300, 400, 500, 750, 1000 };
 
-		sim.assignLinearly();
-		sim.printFullReport();
+		// Test test= new Test(roomNumbers, 50, "/Users/Henry/Downloads");
 
+		Simulation sim= new Simulation("test3");
+
+		System.out.println(sim.assignLinearly());
+		sim.printStats();
 		sim.reset();
-
-		sim.assignLexicographically();
-		sim.printFullReport();
-
-		sim.convert("data3test.dat");
+		System.out.println(sim.assignLexicographically());
+		sim.printStats();
+		sim.reset();
+		System.out.println(sim.assignIP());
+		sim.printStats();
 
 	}
 

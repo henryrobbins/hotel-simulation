@@ -38,8 +38,8 @@ class Tester {
 		assertEquals(2, test.getArrivalPosition());
 		assertEquals(3, test.getType());
 		assertEquals(prefs, test.getPreferences());
-		assertEquals(1, test.getTotalSatisfaction(testRoom));
-		assertEquals(0.5, test.getPercentSatisfaction(testRoom));
+		assertEquals(1, test.getMetPreferences(testRoom));
+		assertEquals(0.5, test.getAverageSatisfaction(testRoom));
 		assertEquals("Guest 1: Type: 3, Preferences: [A, B]", test.toString());
 
 	}
@@ -107,8 +107,9 @@ class Tester {
 		Collections.sort(rooms, new Simulation.SortBySatisfactionFor(g));
 		String test4= "";
 		for (Room room : rooms) {
-			test4+= g.getTotalSatisfaction(room) + " ";
+			test4+= g.getMetPreferences(room) + " ";
 		}
+		System.out.println(test4);
 		assertEquals("3 2 1 1 1 0 ", test4);
 
 		Collections.sort(guests, new Simulation.SortByGuestType());
@@ -137,43 +138,53 @@ class Tester {
 	@Test
 	void testSimulation() {
 
-		Simulation sim1= new Simulation("rooms1.csv", "guests1.csv");
-		sim1.printStats();
+		Simulation sim1= new Simulation("test1");
 		sim1.assignLinearly();
-		assertEquals(0, sim1.getTotalUpgrade());
-		assertEquals(1, sim1.getTotalSatisfaction());
+		assertEquals(0, sim1.getTotalUpgrades());
+		assertEquals(1, sim1.getMetPreferences());
 		assertEquals((double) 4 / 18, sim1.getAverageSatisfaction());
 		sim1.reset();
 		sim1.assignLexicographically();
-		assertEquals(0, sim1.getTotalUpgrade());
-		assertEquals(1, sim1.getTotalSatisfaction());
+		assertEquals(0, sim1.getTotalUpgrades());
+		assertEquals(1, sim1.getMetPreferences());
 		assertEquals((double) 4 / 18, sim1.getAverageSatisfaction());
-		sim1.printFullReport();
+		sim1.reset();
+		sim1.assignIP();
+		assertEquals(0, sim1.getTotalUpgrades());
+		assertEquals(1, sim1.getMetPreferences());
+		assertEquals((double) 2 / 9, sim1.getAverageSatisfaction());
 
-		Simulation sim2= new Simulation("rooms2.csv", "guests2.csv");
+		Simulation sim2= new Simulation("test2");
 		sim2.assignLinearly();
-		assertEquals(2, sim2.getTotalUpgrade());
-		assertEquals(6, sim2.getTotalSatisfaction());
+		assertEquals(2, sim2.getTotalUpgrades());
+		assertEquals(6, sim2.getMetPreferences());
 		assertEquals((double) 2 / 3, sim2.getAverageSatisfaction());
 		sim2.reset();
 		sim2.assignLexicographically();
-		assertEquals(2, sim2.getTotalUpgrade());
-		assertEquals(6, sim2.getTotalSatisfaction());
+		assertEquals(2, sim2.getTotalUpgrades());
+		assertEquals(6, sim2.getMetPreferences());
 		assertEquals((double) 2 / 3, sim2.getAverageSatisfaction());
-		sim2.printFullReport();
+		sim2.reset();
+		sim2.assignIP();
+		assertEquals(2, sim2.getTotalUpgrades());
+		assertEquals(10, sim2.getMetPreferences());
+		assertEquals(0.9444444444444443, sim2.getAverageSatisfaction());
 
-		Simulation sim3= new Simulation("rooms3.csv", "guests3.csv");
+		Simulation sim3= new Simulation("test3");
 		sim3.assignLinearly();
-		assertEquals(1, sim3.getTotalUpgrade());
-		assertEquals(8, sim3.getTotalSatisfaction());
+		assertEquals(1, sim3.getTotalUpgrades());
+		assertEquals(8, sim3.getMetPreferences());
 		assertEquals((double) 19 / 36, sim3.getAverageSatisfaction());
-		sim3.printFullReport();
 		sim3.reset();
 		sim3.assignLexicographically();
-		assertEquals(1, sim3.getTotalUpgrade());
-		assertEquals(11, sim3.getTotalSatisfaction());
-		assertEquals((double) 3 / 4, sim3.getAverageSatisfaction());
-		sim3.printFullReport();
+		assertEquals(1, sim3.getTotalUpgrades());
+		assertEquals(11, sim3.getMetPreferences());
+		assertEquals(0.7499999999999999, sim3.getAverageSatisfaction());
+		sim3.reset();
+		sim3.assignIP();
+		assertEquals(1, sim3.getTotalUpgrades());
+		assertEquals(13, sim3.getMetPreferences());
+		assertEquals(0.8611111111111112, sim3.getAverageSatisfaction());
 
 	}
 
