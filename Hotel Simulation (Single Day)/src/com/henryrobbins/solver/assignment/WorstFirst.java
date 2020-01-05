@@ -25,7 +25,9 @@ public class WorstFirst implements Solver<Assignment> {
 		ArrayList<Guest> guests= instance.guests();
 		HashMap<Room, Double> quality= instance.roomQualities();
 
+		Collections.sort(guests);
 		Collections.sort(guests, Comparator.comparingInt(Guest::arrival));
+		Collections.sort(rooms);
 		Collections.sort(rooms, (a, b) -> Double.compare(quality.get(a), quality.get(b)));
 
 		for (Guest guest : guests) {

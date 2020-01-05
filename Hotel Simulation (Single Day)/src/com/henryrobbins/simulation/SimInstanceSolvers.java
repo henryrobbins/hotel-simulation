@@ -24,7 +24,7 @@ import com.henryrobbins.solver.Solver;
  *
  * </pre>
  */
-public class CompareInstanceSolutions<T extends Decision> extends Simulation {
+public class SimInstanceSolvers<T extends Decision> extends Simulation {
 
 	/** The instance to be solved */
 	private Instance instance;
@@ -33,7 +33,7 @@ public class CompareInstanceSolutions<T extends Decision> extends Simulation {
 	/** The set of statistics */
 	private ArrayList<Statistic<T>> stats;
 
-	public CompareInstanceSolutions(ArrayList<Solver<T>> solvers, ArrayList<Statistic<T>> stats, Instance instance,
+	public SimInstanceSolvers(ArrayList<Solver<T>> solvers, ArrayList<Statistic<T>> stats, Instance instance,
 		File dir,
 		JProgressBar progress) {
 		super(dir, instance.name(), progress);

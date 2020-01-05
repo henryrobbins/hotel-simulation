@@ -22,13 +22,13 @@ public final class Instance {
 
 	/** The name of the instance (for CSV file access and naming purposes) */
 	private String name;
-	/** The list of hotel rooms (must have unique room numbers and fully accommodate guests) */
+	/** The list of hotel rooms (at least one room, unique room numbers, fully accommodate guests) */
 	private final ArrayList<Room> rooms;
 	/** The map of unique room numbers to rooms */
 	private final HashMap<Integer, Room> roomMap;
 	/** The number of rooms of a given type */
 	private final HashMap<Integer, Integer> typeFrequency;
-	/** The list of hotel guests (must have unique guest IDs) */
+	/** The list of hotel guests (at least one guest, must have unique guest IDs) */
 	private final ArrayList<Guest> guests;
 	/** The map of unique guest IDs to guests */
 	private final HashMap<Integer, Guest> guestMap;
@@ -298,8 +298,8 @@ public final class Instance {
 	/** Construct an instance with the respective list of rooms, guests, weights, and team size. <br>
 	 * Any guest-room pair not given a weight will be given a defualt weight of zero.
 	 *
-	 * @param rooms  The list of rooms in this instance (unique room numbers)
-	 * @param guests The list of guest in this instance (unique guest IDs)
+	 * @param rooms  The list of rooms in this instance (unique room numbers, > 1)
+	 * @param guests The list of guest in this instance (unique guest IDs, > 1)
 	 * @param weight The weights between guest-room pairs (in 0..1)
 	 * @param h      The size of the housekeeping team (greater than 0) */
 	private Instance(String name, ArrayList<Room> rooms, HashMap<Integer, Room> roomMap,
@@ -307,9 +307,11 @@ public final class Instance {
 		HashMap<Integer, Guest> guestMap, HashMap<Integer, Integer> requestFrequency,
 		MultiKeyMap<Object, Double> weights, int teamSize) {
 		this.name= new String(name);
+		if (rooms.size() < 1) throw new IllegalArgumentException("No rooms in instance");
 		this.rooms= new ArrayList<>(rooms);
 		this.roomMap= new HashMap<>(roomMap);
 		this.typeFrequency= new HashMap<>(typeFrequency);
+		if (guests.size() < 1) throw new IllegalArgumentException("No guests in instance");
 		this.guests= new ArrayList<>(guests);
 		this.guestMap= new HashMap<>(guestMap);
 		this.requestFrequency= new HashMap<>(requestFrequency);

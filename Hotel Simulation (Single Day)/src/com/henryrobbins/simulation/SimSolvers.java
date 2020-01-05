@@ -29,7 +29,7 @@ import com.henryrobbins.solver.Solver;
  * Solver2  |       -       |       -       |       -
  * </pre>
  */
-public class CompareSolvers<T extends Decision> extends Simulation {
+public class SimSolvers<T extends Decision> extends Simulation {
 
 	/** The number of trials */
 	private int trial;
@@ -40,7 +40,7 @@ public class CompareSolvers<T extends Decision> extends Simulation {
 	/** The set of statistics */
 	private ArrayList<Statistic<T>> stats;
 
-	public CompareSolvers(int t, int[] n, ArrayList<Solver<T>> solvers, ArrayList<Statistic<T>> stats, File dir,
+	public SimSolvers(int t, int[] n, ArrayList<Solver<T>> solvers, ArrayList<Statistic<T>> stats, File dir,
 		String name, JProgressBar progress) {
 		super(dir, name, progress);
 		trial= t;

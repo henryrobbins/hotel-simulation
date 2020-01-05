@@ -20,21 +20,21 @@ import com.henryrobbins.solver.assignment.PreserveEdgesMeanSat;
  * subject to the minimum number of assignment changes is also recorded. <br>
  *
  * <pre>
- *           | Opt. Sat. Before | (k/n+1) | (e-1/n+1) | Opt. Sat. After | Opt. Sat. s.t. e
- * ----------------------------------------------------------------------------------------
- *   Size 1  |        -         |    -    |     -     |        -        |        -
- *   Size 2  |        -         |    -    |     -     |        -        |        -
+ *           | Opt. Sat. Before | (k/n+1) | (e-1/n+1) | Change After | Change After (Preserve)
+ * -------------------------------------------------------------------------------------------
+ *   Size 1  |        -         |    -    |     -     |       -      |            -
+ *   Size 2  |        -         |    -    |     -     |       -      |            -
  *
  * </pre>
  */
-public class CompareAddGuest extends Simulation {
+public class SimAddGuest extends Simulation {
 
 	/** The number of trials */
 	private int trials;
 	/** The set of room sizes */
 	private int[] sizes;
 
-	public CompareAddGuest(int t, int[] s, File dir, String name, JProgressBar progress) {
+	public SimAddGuest(int t, int[] s, File dir, String name, JProgressBar progress) {
 		super(dir, name, progress);
 		trials= t;
 		sizes= s;
@@ -47,12 +47,11 @@ public class CompareAddGuest extends Simulation {
 		double[][] result= new double[sizes.length][5];
 
 		for (int k= 0; k < sizes.length; k++ ) {
-			int n= sizes[k];
 			for (int t= 0; t < trials; t++ ) {
 				Instance before= null;
 				Instance after= null;
 				while (after == null) {
-					before= InstanceFactory.createRandom("compareAddGuestBefore", n);
+					before= InstanceFactory.createRandom("compareAddGuestBefore", sizes[k]);
 					after= InstanceFactory.addGuestTo(before, "compareAddGuestAfter");
 				}
 
@@ -65,20 +64,23 @@ public class CompareAddGuest extends Simulation {
 
 				PreserveEdgesMeanSat preserveSolver= new PreserveEdgesMeanSat(before, assignment);
 
+				int n= before.guests().size();
 				Assignment newPreservedAssignment= preserveSolver.solve(after);
-				int e= preserveSolver.preserveEdges(before);
+				int e= n - preserveSolver.preserveEdges(before);
+				System.out.println(incrementSim());
 
 				double kBound= (double) before.typeSize() / (double) (n + 1);
-				double eBound= (double) (e + 1) / (n + 1);
+				double eBound= (double) (e + 1) / (double) (n + 1);
+
 				double oldMean= assignment.satisfactionStats().getMean();
-				double preserved= newPreservedAssignment.satisfactionStats().getMean();
-				double newMean= newAssignment.satisfactionStats().getMean();
+				double change= oldMean - newAssignment.satisfactionStats().getMean();
+				double changePreserve= oldMean - newPreservedAssignment.satisfactionStats().getMean();
 
 				result[k][0]+= oldMean;
 				result[k][1]+= kBound;
 				result[k][2]+= eBound;
-				result[k][3]+= newMean;
-				result[k][4]+= preserved;
+				result[k][3]+= change;
+				result[k][4]+= changePreserve;
 			}
 		}
 
@@ -89,12 +91,11 @@ public class CompareAddGuest extends Simulation {
 		}
 
 		File file= new File(dir.toString() + "/" + name + ".csv");
-		FileWriter writer= null;
 		try {
 
-			writer= new FileWriter(file);
+			FileWriter writer= new FileWriter(file);
 
-			writer.write(",Opt. Sat. Before,(k/n+1),(e-1/n+1),Opt. Sat. After,Opt. Sat. s.t. e\n");
+			writer.write(",before,kBound,eBound,after,afterPreserve\n");
 
 			for (int i= 0; i < result.length; i++ ) {
 				writer.write(sizes[i] + "");
@@ -111,6 +112,7 @@ public class CompareAddGuest extends Simulation {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+
 	}
 
 }

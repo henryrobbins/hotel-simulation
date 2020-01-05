@@ -1,13 +1,16 @@
 package com.henryrobbins.hotel;
 
 import java.io.BufferedReader;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Properties;
 
 import org.apache.commons.collections4.map.MultiKeyMap;
 import org.apache.commons.math3.distribution.AbstractRealDistribution;
@@ -22,78 +25,46 @@ public class InstanceFactory {
 	private static final double TIME_INTERVAL= 5;
 
 	/** The ratio of guests to rooms */
-	private static double guestRatio= 0.90;
-
+	private static double avgCapacity;
 	/** The ratio of housekeepers to rooms */
-	private static double housekeepingRatio= 0.10;
+	private static double housekeepingRatio;
 
 	/** The set of room types */
-	private static int[] roomTypes= new int[] { 1, 2, 3, 4, 5, 6, 7, 8 };
-	// Type 1 - Single ( View 1 )
-	// Type 2 - Single ( View 2 )
-	// Type 3 - Double ( View 1 )
-	// Type 4 - Double ( View 2 )
-	// Type 5 - Suite ( Type 1 )
-	// Type 6 - Suite ( Type 2 )
-	// Type 7 - Penthouse 1
-	// Type 8 - Penthouse 2
-
+	private static int roomTypes;
 	/** The distribution of room types */
-	private static EnumeratedIntegerDistribution roomDistribution= new EnumeratedIntegerDistribution(roomTypes,
-		new double[] { 0.43, 0.255, 0.14, 0.055, 0.05, 0.045, 0.02, 0.005 });
+	private static EnumeratedIntegerDistribution roomDistribution;
 	/** The distribution of room type requests */
-	private static EnumeratedIntegerDistribution requestDistribution= new EnumeratedIntegerDistribution(roomTypes,
-		new double[] { 0.58, 0.185, 0.125, 0.04, 0.025, 0.025, 0.015, 0.005 });
+	private static EnumeratedIntegerDistribution requestDistribution;
 
 	/** The distribution of guest pickiness thresholds */
-	private static NormalDistribution pickinessDistribution= new NormalDistribution(0.5, 0.2);
+	private static NormalDistribution pickinessDistribution;
+	/** The mean for distribution of guest satisfaction (no upgrade) */
+	private static double weightMean;
+	/** The standard deviation for distribution of guest satisfaction (no upgrade) */
+	private static double weightStd;
+	/** The increase to mean for distribution of guest satisfaction for every upgrade */
+	private static double upgradeBonus;
 
 	/** The distribution of cleaning times based on room type */
-	private static NormalDistribution[] cleanTime= {
-			new NormalDistribution(30 / TIME_INTERVAL, 5 / TIME_INTERVAL), // Type 1
-			new NormalDistribution(30 / TIME_INTERVAL, 5 / TIME_INTERVAL), // Type 2
-			new NormalDistribution(35 / TIME_INTERVAL, 5 / TIME_INTERVAL), // Type 3
-			new NormalDistribution(35 / TIME_INTERVAL, 5 / TIME_INTERVAL), // Type 4
-			new NormalDistribution(40 / TIME_INTERVAL, 10 / TIME_INTERVAL), // Type 5
-			new NormalDistribution(40 / TIME_INTERVAL, 10 / TIME_INTERVAL), // Type 6
-			new NormalDistribution(50 / TIME_INTERVAL, 10 / TIME_INTERVAL), // Type 7
-			new NormalDistribution(50 / TIME_INTERVAL, 10 / TIME_INTERVAL) }; // Type 8
-
+	private static NormalDistribution[] cleanTime;
 	/** The lower bound of cleaning time based on room type */
-	private static int[] cleanTimeLB= {
-			(int) (20 / TIME_INTERVAL),
-			(int) (20 / TIME_INTERVAL),
-			(int) (25 / TIME_INTERVAL),
-			(int) (25 / TIME_INTERVAL),
-			(int) (30 / TIME_INTERVAL),
-			(int) (30 / TIME_INTERVAL),
-			(int) (40 / TIME_INTERVAL),
-			(int) (40 / TIME_INTERVAL) };
-
+	private static int[] cleanTimeLB;
 	/** The upper bound of cleaning time based on room type */
-	private static int[] cleanTimeUB= {
-			(int) (60 / TIME_INTERVAL),
-			(int) (60 / TIME_INTERVAL),
-			(int) (65 / TIME_INTERVAL),
-			(int) (65 / TIME_INTERVAL),
-			(int) (70 / TIME_INTERVAL),
-			(int) (70 / TIME_INTERVAL),
-			(int) (80 / TIME_INTERVAL),
-			(int) (80 / TIME_INTERVAL) };
+	private static int[] cleanTimeUB;
 
 	/** The distribution of check-out times */
-	private static NormalDistribution checkout= new NormalDistribution(660 / TIME_INTERVAL, 45 / TIME_INTERVAL);
+	private static NormalDistribution checkout;
 	/** The lower bound check-out time */
-	private static int checkoutLB= (int) (360.0 / TIME_INTERVAL); // 6:00 AM
+	private static int checkoutLB;
 	/** The upper bound check-out time */
-	private static int checkoutUB= (int) (780.0 / TIME_INTERVAL); // 1:00 PM
+	private static int checkoutUB;
 
 	/** The distribution of check-in times */
-	private static NormalDistribution checkin= new NormalDistribution(900 / TIME_INTERVAL, 45 / TIME_INTERVAL);
+	private static NormalDistribution checkin;
 	/** The lower bound check-in time */
-	private static int checkinLB= (int) (840.0 / TIME_INTERVAL); // 2:00 PM
+	private static int checkinLB;
 	/** The upper bound check-in time */
-	private static int checkinUB= (int) (1200.0 / TIME_INTERVAL); // 8:00 PM
+	private static int checkinUB;
 
 	/** Create an Instance from the given directory which contains three CSV files: <br>
 	 * rooms, guests, and weights. Furthermore, there are h housekeepers in the instance.
@@ -129,6 +100,99 @@ public class InstanceFactory {
 		return readCSV(dir, h);
 	}
 
+	/** Initialize random parameters from the properties file */
+	private static void initParams() {
+		Properties randParam= new Properties();
+		try {
+			InputStream is= new FileInputStream("randParam.properties");
+			randParam.load(is);
+			is.close();
+		} catch (Exception e) {
+			throw new IllegalArgumentException("Issue with properties file");
+		}
+
+		avgCapacity= Double.parseDouble((String) randParam.get("avgCapacity"));
+		housekeepingRatio= Double.parseDouble((String) randParam.get("housekeepingRatio"));
+		roomTypes= Integer.parseInt((String) randParam.get("roomTypes"));
+
+		int[] rooms= new int[roomTypes];
+		for (int i= 0; i < roomTypes; i++ ) {
+			rooms[i]= i + 1;
+		}
+		double[] roomDist= parseDoubleArray((String) randParam.get("roomDist"));
+		roomDistribution= new EnumeratedIntegerDistribution(rooms, roomDist);
+		double[] requestDist= parseDoubleArray((String) randParam.get("requestDist"));
+		requestDistribution= new EnumeratedIntegerDistribution(rooms, requestDist);
+
+		double pickinessMean= Double.parseDouble((String) randParam.get("pickinessMean"));
+		double pickinessStd= Double.parseDouble((String) randParam.get("pickinessStd"));
+		pickinessDistribution= new NormalDistribution(pickinessMean, pickinessStd);
+		weightMean= Double.parseDouble((String) randParam.get("weightMean"));
+		weightStd= Double.parseDouble((String) randParam.get("weightStd"));
+		upgradeBonus= Double.parseDouble((String) randParam.get("upgradeBonus"));
+
+		int[] cleanTimeMean= parseIntArray((String) randParam.get("cleanTimeMean"));
+		int[] cleanTimeStd= parseIntArray((String) randParam.get("cleanTimeStd"));
+		cleanTime= new NormalDistribution[roomTypes];
+		for (int i= 0; i < roomTypes; i++ ) {
+			cleanTime[i]= new NormalDistribution(
+				cleanTimeMean[i] / TIME_INTERVAL, cleanTimeStd[i] / TIME_INTERVAL);
+		}
+
+		int[] cleanTimeLb= parseIntArray((String) randParam.get("cleanTimeLb"));
+		cleanTimeLB= interval(cleanTimeLb);
+
+		int[] cleanTimeUb= parseIntArray((String) randParam.get("cleanTimeUb"));
+		cleanTimeUB= interval(cleanTimeUb);
+
+		int checkoutMean= Integer.parseInt((String) randParam.get("checkoutMean"));
+		int checkoutStd= Integer.parseInt((String) randParam.get("checkoutStd"));
+		checkout= new NormalDistribution(checkoutMean / TIME_INTERVAL, checkoutStd / TIME_INTERVAL);
+		checkoutLB= (int) (Integer.parseInt((String) randParam.get("checkoutLb")) / TIME_INTERVAL);
+		checkoutUB= (int) (Integer.parseInt((String) randParam.get("checkoutUb")) / TIME_INTERVAL);
+
+		int checkinMean= Integer.parseInt((String) randParam.get("checkinMean"));
+		int checkinStd= Integer.parseInt((String) randParam.get("checkinStd"));
+		checkin= new NormalDistribution(checkinMean / TIME_INTERVAL, checkinStd / TIME_INTERVAL);
+		checkinLB= (int) (Integer.parseInt((String) randParam.get("checkinLb")) / TIME_INTERVAL);
+		checkinUB= (int) (Integer.parseInt((String) randParam.get("checkinUb")) / TIME_INTERVAL);
+
+	}
+
+	/** Convert the string representation of an int array back to int[] */
+	private static int[] parseIntArray(String str) {
+
+		str= str.replace("[", "");
+		str= str.replace("]", "");
+		String[] strArray= str.split(",");
+		int[] array= new int[strArray.length];
+		for (int i= 0; i < strArray.length; i++ ) {
+			array[i]= Integer.valueOf(strArray[i].trim());
+		}
+		return array;
+	}
+
+	/** Convert the string representation of a double array back to double[] */
+	private static double[] parseDoubleArray(String str) {
+
+		str= str.replace("[", "");
+		str= str.replace("]", "");
+		String[] strArray= str.split(",");
+		double[] array= new double[strArray.length];
+		for (int i= 0; i < strArray.length; i++ ) {
+			array[i]= Double.valueOf(strArray[i].trim());
+		}
+		return array;
+	}
+
+	/** Convert an array of minutes to time intervals */
+	private static int[] interval(int[] array) {
+		for (int i= 0; i < array.length; i++ ) {
+			array[i]= (int) (array[i] / TIME_INTERVAL);
+		}
+		return array;
+	}
+
 	/** Create a feasible random Instance with n rooms. The number of guests and housekeepers,<br>
 	 * room types and request type, check out and arrival times, and attributes and preferences <br>
 	 * are chosen randomly based on implemented distributions. Information about these <br>
@@ -139,13 +203,14 @@ public class InstanceFactory {
 	public static Instance createRandom(String name, int n) {
 		if (n < 1) throw new IllegalArgumentException("Less than 1 room");
 
-		// The number of arriving guests binomially distributed around 90% capacity
-		BinomialDistribution guestSize= new BinomialDistribution(n, guestRatio);
+		initParams();
 
-		int h= (int) (n * housekeepingRatio);
-		h= h < 1 ? 1 : h;
+		// The number of arriving guests binomially distributed around average number of guests
+		BinomialDistribution guestSize= new BinomialDistribution(n, avgCapacity);
 
-		Instance instance= new Instance.Builder(name, h).build();
+		int h= Math.max(1, (int) (n * housekeepingRatio));
+
+		Instance instance= null;
 
 		boolean feasible= false;
 		while (!feasible) {
@@ -161,7 +226,7 @@ public class InstanceFactory {
 				builder.addRoom(new Room(num, type, out, clean));
 			}
 
-			int g= guestSize.sample();
+			int g= Math.max(1, guestSize.sample());
 			for (int i= 1; i <= g; i++ ) {
 				int id= i;
 				int type= requestDistribution.sample(1)[0];
@@ -181,7 +246,8 @@ public class InstanceFactory {
 				for (Room room : rooms) {
 					// Generate a weight distribution slightly skewed for upgraded room types
 					int upgrade= room.type() - guest.type();
-					NormalDistribution weightDistribution= new NormalDistribution(0.6 + 0.05 * upgrade, 0.2);
+					NormalDistribution weightDistribution= new NormalDistribution(weightMean + upgradeBonus * upgrade,
+						weightStd);
 					// Generate a weight from distribution between pickiness and 1
 					DecimalFormat df= new DecimalFormat("#.######");
 					double weight= Double.valueOf(df.format(rejectionSample(weightDistribution, pickiness, 1)));

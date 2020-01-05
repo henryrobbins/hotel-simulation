@@ -36,7 +36,7 @@ public abstract class AMPLHelper {
 		ampl.solve();
 
 		Assignment assignment= getAssignment(ampl, instance);
-		ampl.close();
+		close(ampl);
 		return assignment;
 	}
 
@@ -56,7 +56,7 @@ public abstract class AMPLHelper {
 		ampl.solve();
 
 		Schedule schedule= getSchedule(ampl, instance);
-		ampl.close();
+		close(ampl);
 		return schedule;
 	}
 
@@ -76,7 +76,7 @@ public abstract class AMPLHelper {
 		ampl.solve();
 
 		Solution solution= getSolution(ampl, instance);
-		ampl.close();
+		close(ampl);
 		return solution;
 
 	}
@@ -88,6 +88,12 @@ public abstract class AMPLHelper {
 		ampl.setOption("presolve_eps", "1e-10");
 		ampl.setOption("constraint_drop_tol", "1e-10");
 		return ampl;
+	}
+
+	/** Close the given AMPL instance and call the garbage collector */
+	public static void close(AMPL ampl) {
+		ampl.close();
+		System.gc();
 	}
 
 	/** Upload the given model file to the given instance of AMPL

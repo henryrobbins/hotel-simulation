@@ -316,9 +316,9 @@ class Tester {
 		Builder compareBuilder= new Builder("build", 3);
 		compareBuilder.addRoom(new Room(3, 1, 2, 3));
 		compareBuilder.addRoom(new Room(1, 3, 1, 2));
+		compareBuilder.addGuest(new Guest(2, 1, 4));
 		Instance differentRooms= compareBuilder.build();
 		compareBuilder.addRoom(new Room(2, 2, 4, 2));
-		compareBuilder.addGuest(new Guest(2, 1, 4));
 		compareBuilder.addGuest(new Guest(1, 1, 2));
 		Instance differentGuests= compareBuilder.build();
 		compareBuilder.addGuest(new Guest(3, 1, 3));
@@ -336,8 +336,12 @@ class Tester {
 		Instance compare= compareBuilder.build();
 
 		compareBuilder= new Builder("dif", 3);
+		compareBuilder.addRoom(new Room(1, 1, 1, 1));
+		compareBuilder.addGuest(new Guest(1, 1, 1));
 		Instance differentName= compareBuilder.build();
-		compareBuilder= new Builder("dif", 2);
+		compareBuilder= new Builder("build", 2);
+		compareBuilder.addRoom(new Room(1, 1, 1, 1));
+		compareBuilder.addGuest(new Guest(1, 1, 1));
 		Instance differentTeamSize= compareBuilder.build();
 
 		assertEquals(false, primary.equals(null));
@@ -356,6 +360,15 @@ class Tester {
 		assertThrows(IllegalArgumentException.class, () -> { new Instance.Builder("copy", null); });
 		Instance copy= new Builder("copy", primary).build();
 		assertEquals(primary, copy);
+
+		// TESTS 1 ROOM MINIMUM AND 1 GUEST MINIMUM
+
+		Builder noRooms= new Builder("dif", 3);
+		noRooms.addGuest(new Guest(1, 1, 1));
+		assertThrows(IllegalArgumentException.class, () -> { noRooms.build(); });
+		Builder noGuests= new Builder("dif", 3);
+		noGuests.addRoom(new Room(1, 1, 1, 1));
+		assertThrows(IllegalArgumentException.class, () -> { noGuests.build(); });
 
 		// TESTS INSTANCE TOSTRING METHOD
 
@@ -450,15 +463,15 @@ class Tester {
 		assertThrows(IllegalArgumentException.class, () -> { InstanceFactory.readCSV("test3", 0); });
 		assertEquals(instance, InstanceFactory.readCSV("test3", 3));
 
+		// tests write CSV method
+		instance.writeCSV();
+		assertEquals(instance, InstanceFactory.readCSV("test3", 3));
+
 		// tests create random instance method
 		assertThrows(IllegalArgumentException.class, () -> { InstanceFactory.createRandom(null, 10); });
 		assertThrows(IllegalArgumentException.class, () -> { InstanceFactory.createRandom("", 10); });
 		assertThrows(IllegalArgumentException.class, () -> { InstanceFactory.createRandom("randTest", 0); });
 		Instance rand= InstanceFactory.createRandom("randTest", 100);
-
-		// tests write CSV method
-		rand.writeCSV();
-		assertEquals(rand, InstanceFactory.readCSV("randTest", 10));
 
 		// tests add guest method
 		Instance.Builder builder2= new Builder("test3", 3);
@@ -607,6 +620,7 @@ class Tester {
 		assertEquals("Max Upgrade", stats.get(3).toString());
 		assertEquals("Min Upgrade", stats.get(4).toString());
 		assertEquals("Mean Upgrade", stats.get(5).toString());
+		assertEquals("Sum Upgrade", stats.get(6).toString());
 
 		assertEquals(1.0, stats.get(0).getStat(assignment), 0.0001);
 		assertEquals(0.5, stats.get(1).getStat(assignment), 0.0001);
@@ -614,6 +628,7 @@ class Tester {
 		assertEquals(1, stats.get(3).getStat(assignment), 0.0001);
 		assertEquals(0, stats.get(4).getStat(assignment), 0.0001);
 		assertEquals(1.0 / 6.0, stats.get(5).getStat(assignment), 0.0001);
+		assertEquals(1, stats.get(6).getStat(assignment), 0.0001);
 
 	}
 
@@ -846,6 +861,8 @@ class Tester {
 
 		assertThrows(IllegalArgumentException.class, () -> { AMPLHelper.getSolution(null, instance); });
 		assertThrows(IllegalArgumentException.class, () -> { AMPLHelper.getSolution(ampl, null); });
+
+		AMPLHelper.close(ampl);
 
 	}
 
@@ -1083,25 +1100,31 @@ class Tester {
 			double avg= solver.solve(instance).satisfactionStats().getMean();
 			assertEquals(realAvg, avg, 0.01);
 		}
-
 	}
 
 	@Test
 	void testPreserveEdges() {
 
-		Instance instance= InstanceFactory.createRandom("rand", 100);
+		Instance instance= null;
+		Instance instanceAddOne= null;
+		while (instanceAddOne == null) {
+			instance= InstanceFactory.createRandom("compareAddGuestBefore", 10);
+			instanceAddOne= InstanceFactory.addGuestTo(instance, "compareAddGuestAfter");
+		}
+
 		Assignment assignment= new AssignmentIPSolver("Mean_Satisfaction").solve(instance);
-		Instance instanceAddOne= InstanceFactory.addGuestTo(instance, "+1");
 		PreserveEdgesMeanSat solver= new PreserveEdgesMeanSat(instance, assignment);
 		Assignment assignmentAddOne= solver.solve(instanceAddOne);
 		int actual= solver.preserveEdges(instanceAddOne);
 		int expected= 0;
+
 		for (Guest guest : instance.guests()) {
 			if (assignmentAddOne.assignment().get(guest).equals(assignment.assignment().get(guest))) {
 				expected++ ;
 			}
 		}
 		assertEquals(expected, actual);
+		assertEquals("Mean Sat s.t. Preserved Edges", solver.toString());
 	}
 
 	@Test

@@ -26,7 +26,7 @@ public class MaxMeanSatSTMinIP implements Solver<Assignment> {
 		ampl.solve();
 
 		Assignment assignment= AMPLHelper.getAssignment(ampl, instance);
-		ampl.close();
+		AMPLHelper.close(ampl);
 		return assignment;
 
 	}

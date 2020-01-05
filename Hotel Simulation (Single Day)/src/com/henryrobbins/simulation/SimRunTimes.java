@@ -26,7 +26,7 @@ import com.henryrobbins.solver.Solver;
  *
  * </pre>
  */
-public class CompareRunTimes<T extends Decision> extends Simulation {
+public class SimRunTimes<T extends Decision> extends Simulation {
 
 	/** The number of trials */
 	private int trial;
@@ -35,7 +35,7 @@ public class CompareRunTimes<T extends Decision> extends Simulation {
 	/** The set of solvers */
 	private ArrayList<Solver<T>> solvers;
 
-	public CompareRunTimes(int t, int[] n, ArrayList<Solver<T>> solvers, File dir, String name,
+	public SimRunTimes(int t, int[] n, ArrayList<Solver<T>> solvers, File dir, String name,
 		JProgressBar progress) {
 		super(dir, name, progress);
 		trial= t;

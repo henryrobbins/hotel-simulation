@@ -2,7 +2,7 @@ package com.henryrobbins.hotel;
 
 /** Maintains information about an individual guest. This includes an ID associated with <br>
  * the guest, the time interval in which they arrive, and the type of room they are requesting. */
-public final class Guest {
+public final class Guest implements Comparable<Guest> {
 
 	/** This guest's ID (at least 1) */
 	private final int id;
@@ -63,5 +63,10 @@ public final class Guest {
 //		sb.append("Preferences: " + preferences);
 //		return sb.toString();
 		return String.valueOf(id);
+	}
+
+	@Override
+	public int compareTo(Guest g) {
+		return id - g.id;
 	}
 }

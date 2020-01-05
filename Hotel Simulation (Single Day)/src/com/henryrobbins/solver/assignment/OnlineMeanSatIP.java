@@ -68,7 +68,7 @@ public class OnlineMeanSatIP implements Solver<Assignment> {
 			}
 		}
 
-		ampl.close();
+		AMPLHelper.close(ampl);
 
 		return assignment;
 

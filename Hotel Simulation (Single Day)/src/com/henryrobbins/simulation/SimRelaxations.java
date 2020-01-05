@@ -36,7 +36,7 @@ import com.henryrobbins.solver.assignment.MinUpgradesSTSatIP;
  *
  * </pre>
  */
-public class CompareRelaxations extends Simulation {
+public class SimRelaxations extends Simulation {
 
 	/** The number of trials */
 	private int trial;
@@ -49,7 +49,7 @@ public class CompareRelaxations extends Simulation {
 	/** The set of statistics */
 	private ArrayList<Statistic<Assignment>> stats;
 
-	public CompareRelaxations(int t, int n, double[] a, double[] b, ArrayList<Statistic<Assignment>> stats, File dir,
+	public SimRelaxations(int t, int n, double[] a, double[] b, ArrayList<Statistic<Assignment>> stats, File dir,
 		String name, JProgressBar progress) {
 		super(dir, name, progress);
 		trial= t;

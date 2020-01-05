@@ -121,7 +121,7 @@ public class SuggestiveMeanSatIP implements Solver<Assignment> {
 
 		}
 
-		ampl.close();
+		AMPLHelper.close(ampl);
 
 		return assignment;
 

@@ -25,9 +25,9 @@ import com.henryrobbins.decision.Assignment;
 import com.henryrobbins.decision.Statistic;
 import com.henryrobbins.hotel.Instance;
 import com.henryrobbins.hotel.InstanceFactory;
-import com.henryrobbins.simulation.CompareInstanceSolutions;
-import com.henryrobbins.simulation.CompareRunTimes;
-import com.henryrobbins.simulation.CompareSolvers;
+import com.henryrobbins.simulation.SimInstanceSolvers;
+import com.henryrobbins.simulation.SimRunTimes;
+import com.henryrobbins.simulation.SimSolvers;
 import com.henryrobbins.solver.Solver;
 
 public class Window extends JFrame {
@@ -327,15 +327,15 @@ public class Window extends JFrame {
 
 			if (typeChoose.getSelectedItem().equals("Instance - Compare Room Assignment")) {
 
-				new CompareInstanceSolutions<>(assignmentSolvers, assignmentStats, instance, resultDir, null).start();
+				new SimInstanceSolvers<>(assignmentSolvers, assignmentStats, instance, resultDir, null).start();
 
 			} else if (typeChoose.getSelectedItem().equals("Random - Compare Room Assignment")) {
 
-				new CompareSolvers<>(t, sizes, assignmentSolvers, assignmentStats, resultDir, name, progress).start();
+				new SimSolvers<>(t, sizes, assignmentSolvers, assignmentStats, resultDir, name, progress).start();
 
 			} else if (typeChoose.getSelectedItem().equals("Random - Compare Run Times")) {
 
-				new CompareRunTimes<>(t, sizes, assignmentSolvers, resultDir, name, progress).start();
+				new SimRunTimes<>(t, sizes, assignmentSolvers, resultDir, name, progress).start();
 			}
 
 			run.setEnabled(true);

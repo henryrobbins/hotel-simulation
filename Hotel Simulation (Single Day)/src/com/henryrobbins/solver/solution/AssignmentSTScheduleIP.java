@@ -56,7 +56,7 @@ public class AssignmentSTScheduleIP implements Solver<Solution> {
 
 		ampl.solve();
 		Assignment assignment= AMPLHelper.getAssignment(ampl, instance);
-		ampl.close();
+		AMPLHelper.close(ampl);
 
 		return new Solution(instance, schedule, assignment);
 

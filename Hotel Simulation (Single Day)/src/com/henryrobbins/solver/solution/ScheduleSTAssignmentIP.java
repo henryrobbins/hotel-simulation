@@ -60,7 +60,7 @@ public class ScheduleSTAssignmentIP implements Solver<Solution> {
 
 		ampl.solve();
 		Schedule schedule= AMPLHelper.getSchedule(ampl, instance);
-		ampl.close();
+		AMPLHelper.close(ampl);
 		return new Solution(instance, schedule, assignment);
 
 	}

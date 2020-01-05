@@ -36,7 +36,7 @@ public class PreserveEdgesMeanSat implements Solver<Assignment> {
 		ampl.solve();
 
 		Assignment assignment= AMPLHelper.getAssignment(ampl, instance);
-		ampl.close();
+		AMPLHelper.close(ampl);
 		return assignment;
 
 	}
@@ -56,7 +56,7 @@ public class PreserveEdgesMeanSat implements Solver<Assignment> {
 		ampl.solve();
 
 		int preserved= (int) ampl.getObjective("Preserved_Edges").value();
-		ampl.close();
+		AMPLHelper.close(ampl);
 		return preserved;
 	}
 
