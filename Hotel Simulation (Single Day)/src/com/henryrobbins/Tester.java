@@ -889,7 +889,8 @@ class Tester {
 		assertThrows(IllegalArgumentException.class, () -> { solver.solve(null); });
 		Assignment assignment= solver.solve(instance);
 		System.out.println(assignment);
-		assertEquals(0.608, assignment.satisfactionStats().getMean(), 0.01);
+		System.out.println(instance);
+		assertEquals(0.748, assignment.satisfactionStats().getMean(), 0.01);
 		assertEquals(0.33, assignment.satisfactionStats().getMin(), 0.01);
 		assertEquals(1, assignment.upgradeStats().getSum());
 		assertEquals("Best First", solver.toString());
@@ -904,7 +905,7 @@ class Tester {
 		assertThrows(IllegalArgumentException.class, () -> { solver.solve(null); });
 		Assignment assignment= solver.solve(instance);
 		System.out.println(assignment);
-		assertEquals(0.608, assignment.satisfactionStats().getMean(), 0.01);
+		assertEquals(0.387, assignment.satisfactionStats().getMean(), 0.01);
 		assertEquals(0.33, assignment.satisfactionStats().getMin(), 0.01);
 		assertEquals(1, assignment.upgradeStats().getSum());
 		assertEquals("Worst First", solver.toString());
@@ -1105,26 +1106,29 @@ class Tester {
 	@Test
 	void testPreserveEdges() {
 
-		Instance instance= null;
-		Instance instanceAddOne= null;
-		while (instanceAddOne == null) {
-			instance= InstanceFactory.createRandom("compareAddGuestBefore", 10);
-			instanceAddOne= InstanceFactory.addGuestTo(instance, "compareAddGuestAfter");
-		}
+		for (int trial= 0; trial < t; trial++ ) {
 
-		Assignment assignment= new AssignmentIPSolver("Mean_Satisfaction").solve(instance);
-		PreserveEdgesMeanSat solver= new PreserveEdgesMeanSat(instance, assignment);
-		Assignment assignmentAddOne= solver.solve(instanceAddOne);
-		int actual= solver.preserveEdges(instanceAddOne);
-		int expected= 0;
-
-		for (Guest guest : instance.guests()) {
-			if (assignmentAddOne.assignment().get(guest).equals(assignment.assignment().get(guest))) {
-				expected++ ;
+			Instance instance= null;
+			Instance instanceAddOne= null;
+			while (instanceAddOne == null) {
+				instance= InstanceFactory.createRandom("compareAddGuestBefore", n);
+				instanceAddOne= InstanceFactory.addGuestTo(instance, "compareAddGuestAfter");
 			}
+
+			Assignment assignment= new AssignmentIPSolver("Mean_Satisfaction").solve(instance);
+			PreserveEdgesMeanSat solver= new PreserveEdgesMeanSat(instance, assignment);
+			Assignment assignmentAddOne= solver.solve(instanceAddOne);
+			int actual= solver.preserveEdges(instanceAddOne);
+			int expected= 0;
+
+			for (Guest guest : instance.guests()) {
+				if (assignmentAddOne.assignment().get(guest).equals(assignment.assignment().get(guest))) {
+					expected++ ;
+				}
+			}
+			assertEquals(expected, actual);
+			assertEquals("Mean Sat s.t. Preserved Edges", solver.toString());
 		}
-		assertEquals(expected, actual);
-		assertEquals("Mean Sat s.t. Preserved Edges", solver.toString());
 	}
 
 	@Test

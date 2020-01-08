@@ -56,7 +56,6 @@ public class SimShowTrials<T extends Decision> extends Simulation {
 				T outcome= solver.solve(instance);
 				result[t][solvers.indexOf(solver)]= stat.getStat(outcome);
 				System.out.println(incrementSim());
-				System.out.println(simTotal);
 			}
 		}
 

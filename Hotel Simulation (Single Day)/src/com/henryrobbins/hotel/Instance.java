@@ -144,7 +144,7 @@ public final class Instance {
 		HashMap<Room, Double> quality= new HashMap<>();
 		for (Room room : rooms) {
 			int feasibleGuests= 0;
-			int totalQuality= 0;
+			double totalQuality= 0;
 			for (Guest guest : guests) {
 				if (room.type() >= guest.type()) {
 					feasibleGuests++ ;

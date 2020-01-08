@@ -13,6 +13,7 @@ import com.henryrobbins.decision.Statistic.SumUpgrade;
 import com.henryrobbins.hotel.Instance;
 import com.henryrobbins.hotel.InstanceFactory;
 import com.henryrobbins.solver.assignment.AssignmentIPSolver;
+import com.henryrobbins.solver.assignment.MaxMeanSatSTMinIP;
 import com.henryrobbins.solver.assignment.MinUpgradesSTSatIP;
 
 /** Runs the three-round solver minimizing upgrades for all combinations of the provided alpha <br>
@@ -57,7 +58,7 @@ public class SimRelaxations extends Simulation {
 		alpha= a;
 		beta= b;
 		this.stats= stats;
-		simTotal= t * a.length * b.length + t;
+		simTotal= t * a.length * b.length + 2 * t;
 	}
 
 	@Override
@@ -68,14 +69,22 @@ public class SimRelaxations extends Simulation {
 
 		for (int t= 0; t < trial; t++ ) {
 			Instance instance= InstanceFactory.createRandom(name + "_t" + t, size);
+
 			AssignmentIPSolver minUpgrades= new AssignmentIPSolver("Upgrades");
 			SumUpgrade tot= new SumUpgrade();
 			optUpgrades+= tot.getStat(minUpgrades.solve(instance));
 			System.out.println(incrementSim());
+
+			MaxMeanSatSTMinIP maxSat= new MaxMeanSatSTMinIP();
+			Assignment maxSatAssign= maxSat.solve(instance);
+			System.out.println(incrementSim());
+			double min= maxSatAssign.satisfactionStats().getMin();
+			double mean= maxSatAssign.satisfactionStats().getMean();
+
 			for (int a= 0; a < alpha.length; a++ ) {
 				for (int b= 0; b < beta.length; b++ ) {
 					MinUpgradesSTSatIP solver= new MinUpgradesSTSatIP(alpha[a], beta[b]);
-					Assignment assignment= solver.solve(instance);
+					Assignment assignment= solver.solve(instance, min, mean);
 					for (Statistic<Assignment> stat : stats) {
 						result[stats.indexOf(stat)][a][b]+= stat.getStat(assignment);
 					}

@@ -40,13 +40,21 @@ public class MinUpgradesSTSatIP implements Solver<Assignment> {
 		double minimum= presolve.satisfactionStats().getMin();
 		double average= presolve.satisfactionStats().getMean();
 
+		return solve(instance, minimum, average);
+	}
+
+	/** Return the assignment with minimum upgrades subject to min and mean satisfaction <br>
+	 * constraints relaxed by the current alpha and beta relaxation constants. The minimum <br>
+	 * and average satisfaction are given as inputs to the problem */
+	public Assignment solve(Instance instance, double min, double mean) {
+
 		AMPL ampl= AMPLHelper.createAMPL();
 
 		AMPLHelper.uploadModel(ampl, "assignment");
 		AMPLHelper.setObjectiveFunction(ampl, "Upgrades");
 		AMPLHelper.setRoomAndGuestParams(ampl, instance);
-		ampl.getParameter("minMeanMatchingWeight").set(average * alpha);
-		ampl.getVariable("minWeight").fix(minimum * beta);
+		ampl.getParameter("minMeanMatchingWeight").set(mean * alpha);
+		ampl.getVariable("minWeight").fix(min * beta);
 		ampl.solve();
 
 		Assignment assignment= AMPLHelper.getAssignment(ampl, instance);
