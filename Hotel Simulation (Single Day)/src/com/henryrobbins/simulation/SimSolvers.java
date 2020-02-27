@@ -56,7 +56,7 @@ public class SimSolvers<T extends Decision> extends Simulation {
 
 		for (int n= 0; n < sizes.length; n++ ) {
 			for (int t= 0; t < trial; t++ ) {
-				Instance instance= InstanceFactory.createRandom(name + "_n" + sizes[n] + "_t" + t, sizes[n]);
+				Instance instance= InstanceFactory.randInstance(sizes[n]);
 				for (Solver<T> solver : solvers) {
 					T outcome= solver.solve(instance);
 					for (Statistic<T> stat : stats) {

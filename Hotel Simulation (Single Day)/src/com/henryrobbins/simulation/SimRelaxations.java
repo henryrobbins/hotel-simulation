@@ -68,7 +68,7 @@ public class SimRelaxations extends Simulation {
 		double optUpgrades= 0;
 
 		for (int t= 0; t < trial; t++ ) {
-			Instance instance= InstanceFactory.createRandom(name + "_t" + t, size);
+			Instance instance= InstanceFactory.randInstance(size);
 
 			AssignmentIPSolver minUpgrades= new AssignmentIPSolver("Upgrades");
 			SumUpgrade tot= new SumUpgrade();

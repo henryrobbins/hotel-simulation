@@ -51,8 +51,8 @@ public class SimAddGuest extends Simulation {
 				Instance before= null;
 				Instance after= null;
 				while (after == null) {
-					before= InstanceFactory.createRandom("compareAddGuestBefore", sizes[k]);
-					after= InstanceFactory.addGuestTo(before, "compareAddGuestAfter");
+					before= InstanceFactory.randInstance(sizes[k]);
+					after= InstanceFactory.addGuestTo(before);
 				}
 
 				AssignmentIPSolver solver= new AssignmentIPSolver("Mean_Satisfaction");

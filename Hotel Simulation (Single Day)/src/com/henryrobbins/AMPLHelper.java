@@ -209,7 +209,7 @@ public abstract class AMPLHelper {
 
 		DataFrame housekeeperDF= new DataFrame(1, "HOUSEKEEPERS");
 
-		int n= instance.teamSize();
+		int n= instance.getH();
 		String[] id= new String[n];
 		for (int h= 0; h < n; h++ ) {
 			id[h]= String.valueOf(h + 1);

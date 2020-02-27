@@ -51,7 +51,7 @@ public class SimShowTrials<T extends Decision> extends Simulation {
 		double[][] result= new double[trial][solvers.size()];
 
 		for (int t= 0; t < trial; t++ ) {
-			Instance instance= InstanceFactory.createRandom(name + "_n" + size + "_t" + t, size);
+			Instance instance= InstanceFactory.randInstance(size);
 			for (Solver<T> solver : solvers) {
 				T outcome= solver.solve(instance);
 				result[t][solvers.indexOf(solver)]= stat.getStat(outcome);

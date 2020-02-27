@@ -3,8 +3,11 @@ package com.henryrobbins;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 
 import org.apache.commons.collections4.BidiMap;
 import org.apache.commons.collections4.bidimap.DualHashBidiMap;
@@ -17,9 +20,10 @@ import com.henryrobbins.decision.Schedule;
 import com.henryrobbins.decision.Solution;
 import com.henryrobbins.decision.Statistic;
 import com.henryrobbins.hotel.Guest;
+import com.henryrobbins.hotel.Hotel;
+import com.henryrobbins.hotel.HotelFactory;
 import com.henryrobbins.hotel.Housekeeper;
 import com.henryrobbins.hotel.Instance;
-import com.henryrobbins.hotel.Instance.Builder;
 import com.henryrobbins.hotel.InstanceFactory;
 import com.henryrobbins.hotel.Room;
 import com.henryrobbins.solver.assignment.AssignmentIPSolver;
@@ -43,38 +47,54 @@ import com.henryrobbins.solver.solution.SolutionIPSolver;
 class Tester {
 
 	/** The number of random instances to test */
-	private int t= 5;
+	private static int t= 5;
 	/** The size of the randomly generated hotels */
-	private int n= 5;
+	private static int n= 5;
+
+	/** The test instances */
+	private static Instance[] test= new Instance[6];
+
+	// Instantiate the test instances
+	static {
+		Path dir= Paths.get("Test Files");
+		for (int i= 0; i < 6; i++ ) {
+			Hotel hotel= HotelFactory.readCSV(Paths.get("Test Files", String.valueOf(i)));
+			test[i]= InstanceFactory.readCSV(Paths.get("Test Files", String.valueOf(i), String.valueOf(0)), hotel);
+		}
+	}
 
 	@Test
 	void testRoom() {
 
 		// tests illegal arguments for constructor
-		assertThrows(IllegalArgumentException.class, () -> { new Room(0, 2, 0, 2); });
-		assertThrows(IllegalArgumentException.class, () -> { new Room(1, 0, 0, 2); });
-		assertThrows(IllegalArgumentException.class, () -> { new Room(1, 2, -1, 2); });
-		assertThrows(IllegalArgumentException.class, () -> { new Room(1, 2, 0, 0); });
+		assertThrows(IllegalArgumentException.class, () -> { new Room(0, 2, 0.5, 0, 2); });
+		assertThrows(IllegalArgumentException.class, () -> { new Room(1, 0, 0.5, 0, 2); });
+		assertThrows(IllegalArgumentException.class, () -> { new Room(1, 2, 0.5, -1, 2); });
+		assertThrows(IllegalArgumentException.class, () -> { new Room(1, 2, 0.5, 0, 0); });
+		assertThrows(IllegalArgumentException.class, () -> { new Room(1, 2, -1, 1, 2); });
+		assertThrows(IllegalArgumentException.class, () -> { new Room(1, 2, 2, 1, 2); });
 
 		// tests constructor
-		Room room= new Room(1, 2, 1, 2);
+		Room room= new Room(1, 2, 0.5, 1, 2);
 		assertEquals(1, room.num());
 		assertEquals(2, room.type());
+		assertEquals(0.5, room.quality());
 		assertEquals(1, room.release());
 		assertEquals(2, room.process());
 		assertEquals("1", room.toString());
 
 		// tests ordering
-		assertEquals(true, new Room(1, 3, 1, 2).compareTo(room) > 0);
+		assertEquals(true, new Room(1, 3, 0.5, 1, 2).compareTo(room) > 0);
 
 		// tests equals
 		assertEquals(false, room.equals(null));
 		assertEquals(false, room.equals(new Guest(1, 2, 3)));
-		assertEquals(false, room.equals(new Room(2, 2, 1, 2)));
-		assertEquals(false, room.equals(new Room(1, 3, 1, 2)));
-		assertEquals(false, room.equals(new Room(1, 2, 2, 2)));
-		assertEquals(false, room.equals(new Room(1, 2, 1, 3)));
-		assertEquals(true, room.equals(new Room(1, 2, 1, 2)));
+		assertEquals(false, room.equals(new Room(2, 2, 0.5, 1, 2)));
+		assertEquals(false, room.equals(new Room(1, 3, 0.5, 1, 2)));
+		assertEquals(false, room.equals(new Room(1, 2, 0.25, 1, 2)));
+		assertEquals(false, room.equals(new Room(1, 2, 0.5, 2, 2)));
+		assertEquals(false, room.equals(new Room(1, 2, 0.5, 1, 3)));
+		assertEquals(true, room.equals(new Room(1, 2, 0.5, 1, 2)));
 
 	}
 
@@ -93,9 +113,12 @@ class Tester {
 		assertEquals(1, guest.arrival());
 		assertEquals("1", guest.toString());
 
+		// tests ordering
+		assertEquals(true, new Guest(2, 3, 1).compareTo(guest) > 0);
+
 		// tests equals
 		assertEquals(false, guest.equals(null));
-		assertEquals(false, guest.equals(new Room(2, 2, 1, 2)));
+		assertEquals(false, guest.equals(new Room(2, 2, 1, 1, 2)));
 		assertEquals(false, guest.equals(new Guest(2, 3, 1)));
 		assertEquals(false, guest.equals(new Guest(1, 4, 1)));
 		assertEquals(false, guest.equals(new Guest(1, 3, 2)));
@@ -113,10 +136,10 @@ class Tester {
 		assertThrows(IllegalArgumentException.class, () -> { housekeeper.appendRoom(null); });
 		assertThrows(IllegalArgumentException.class, () -> { housekeeper.addRoom(null, 2); });
 
-		Room room1= new Room(1, 1, 0, 2);
-		Room room2= new Room(2, 1, 3, 2);
-		Room room3= new Room(3, 1, 4, 2);
-		Room room4= new Room(4, 1, 2, 2);
+		Room room1= new Room(1, 1, 1, 0, 2);
+		Room room2= new Room(2, 1, 1, 3, 2);
+		Room room3= new Room(3, 1, 1, 4, 2);
+		Room room4= new Room(4, 1, 1, 2, 2);
 
 		housekeeper.appendRoom(room1);
 		assertThrows(IllegalArgumentException.class, () -> { housekeeper.addRoom(room2, 2); });
@@ -138,45 +161,100 @@ class Tester {
 	}
 
 	@Test
-	void testInstance() {
+	void testHotel() {
 
-		// tests illegal arguments for constructor of builder
-		assertThrows(IllegalArgumentException.class, () -> { new Instance.Builder("", 2); });
-		assertThrows(IllegalArgumentException.class, () -> { new Instance.Builder(null, 2); });
-		assertThrows(IllegalArgumentException.class, () -> { new Instance.Builder("test", 0); });
-		assertThrows(IllegalArgumentException.class, () -> { new Instance.Builder("test", null); });
-		assertThrows(IllegalArgumentException.class, () -> { new Instance.Builder(null, null); });
-
-		Instance.Builder builder= new Instance.Builder("name", 2);
+		Hotel.Builder builder= new Hotel.Builder();
 
 		// TESTS FOR ADDING ROOM TO BUILDER
 
 		// tests illegal arguments for adding a room to the builder
 		assertThrows(IllegalArgumentException.class, () -> { builder.addRoom((Room) null); });
 
-		Room room1= new Room(1, 1, 1, 2);
+		// tests 1 room minimum
+		assertThrows(IllegalArgumentException.class, () -> { builder.build(); });
+
+		Room room1= new Room(1, 1, 1, 1, 2);
 		builder.addRoom(room1);
 
+		// tests 1 housekeeper minimum
+		assertThrows(IllegalArgumentException.class, () -> { builder.build(); });
+
 		// tests illegal arguments for adding a room to the builder (duplicate room number)
-		Room room12= new Room(1, 2, 2, 2);
+		Room room12= new Room(1, 2, 1, 2, 2);
 		assertThrows(IllegalArgumentException.class, () -> { builder.addRoom(room12); });
 
 		// tests add room method for builder
-		Room room2= new Room(2, 2, 2, 2);
-		Room room3= new Room(3, 3, 3, 2);
+		Room room2= new Room(2, 3, 1, 2, 2);
+		Room room3= new Room(3, 3, 1, 3, 2);
 		builder.addRoom(room2);
+		builder.setH(1);
+		Hotel differentH= builder.build();
+		builder.setH(2);
+		Hotel differentRooms= builder.build();
 		builder.addRoom(room3);
-
-		assertEquals(room1, builder.room(1));
-		assertEquals(room2, builder.room(2));
-		assertEquals(room3, builder.room(3));
 
 		ArrayList<Room> rooms= new ArrayList<>();
 		rooms.add(room1);
 		rooms.add(room2);
 		rooms.add(room3);
 
-		assertEquals(rooms, builder.rooms());
+		Hotel hotel= builder.build();
+		Hotel hotel2= hotel;
+
+		// tests equals
+		assertEquals(false, hotel.equals(null));
+		assertEquals(false, hotel.equals(room1));
+		assertEquals(false, hotel.equals(differentH));
+		assertEquals(false, hotel.equals(differentRooms));
+		assertEquals(hotel2, hotel);
+
+		assertEquals(room1, hotel.room(1));
+		assertEquals(room2, hotel.room(2));
+		assertEquals(room3, hotel.room(3));
+		assertEquals(rooms, hotel.rooms());
+		assertEquals(2, hotel.getH());
+		assertEquals(2, hotel.typeSize());
+
+		HashMap<Integer, Integer> typeFreq= new HashMap<>();
+		typeFreq.put(1, 1);
+		typeFreq.put(3, 2);
+		assertEquals(typeFreq, hotel.typeFreq());
+
+		// tests write
+		hotel.writeCSV();
+		System.out.println(hotel.id());
+		Hotel hotelFromCSV= HotelFactory.readCSV(hotel.id());
+		assertEquals(hotelFromCSV, hotel);
+
+	}
+
+	@Test
+	void testInstance() {
+
+		Hotel.Builder hbuilder= new Hotel.Builder();
+
+		Room room1= new Room(1, 1, 1, 1, 2);
+		Room room2= new Room(2, 2, 1, 2, 2);
+		Room room3= new Room(3, 3, 1, 3, 2);
+		Room room4= new Room(4, 1, 1, 1, 1);
+		Room room5= new Room(5, 1, 1, 1, 1);
+
+		ArrayList<Room> rooms= new ArrayList<>();
+		rooms.add(room1);
+		rooms.add(room2);
+		rooms.add(room3);
+
+		for (Room room : rooms) {
+			hbuilder.addRoom(room);
+		}
+		hbuilder.setH(2);
+		Hotel hotel= hbuilder.build();
+
+		hbuilder.addRoom(room4);
+		hbuilder.addRoom(room5);
+		Hotel hotel45= hbuilder.build();
+
+		Instance.Builder builder= new Instance.Builder(hotel);
 
 		// TESTS FOR ADDING GUEST TO BUILDER
 
@@ -213,7 +291,8 @@ class Tester {
 		assertThrows(IllegalArgumentException.class, () -> { builder.addWeight(null, room1, 0.5); });
 		assertThrows(IllegalArgumentException.class, () -> { builder.addWeight(new Guest(2, 2, 2), room1, 0.5); });
 		assertThrows(IllegalArgumentException.class, () -> { builder.addWeight(guest1, null, 0.5); });
-		assertThrows(IllegalArgumentException.class, () -> { builder.addWeight(guest1, new Room(2, 2, 2, 3), 0.5); });
+		assertThrows(IllegalArgumentException.class,
+			() -> { builder.addWeight(guest1, new Room(2, 2, 1, 2, 3), 0.5); });
 		assertThrows(IllegalArgumentException.class, () -> { builder.addWeight(guest1, room1, 2.0); });
 		assertThrows(IllegalArgumentException.class, () -> { builder.addWeight(guest1, room1, -1.0); });
 
@@ -245,7 +324,6 @@ class Tester {
 		// TESTS BUILDER BUILD METHOD (BLANK)
 
 		Instance instance= builder.build();
-		assertEquals("name", instance.name());
 		assertEquals(rooms, instance.rooms());
 		assertEquals(room1, instance.room(1));
 		assertEquals(guests, instance.guests());
@@ -253,36 +331,35 @@ class Tester {
 		assertEquals(1.0, instance.weight(3, 2), 0.0001);
 		assertEquals(0.3, instance.weight(guest2, room3), 0.0001);
 		assertEquals(wgts, instance.weights());
-		assertEquals(2, instance.teamSize());
+		assertEquals(2, instance.getH());
 		assertEquals(3, instance.typeSize());
 
+		// TODO: Write these
 		// tests methods for feasibility and feasible type requests
-		assertEquals(true, instance.feasible());
-		assertEquals(0, instance.maxFeasibleTypeRequest());
+//		assertEquals(true, instance.feasible());
+//		assertEquals(0, instance.maxFeasibleTypeRequest());
+//
+//		builder.addGuest(new Guest(4, 1, 1));
+//		instance= builder.build();
+//
+//		assertEquals(false, instance.feasible());
+//		assertEquals(-1, instance.maxFeasibleTypeRequest());
+//
+//		assertEquals(true, instance.feasible());
+//		assertEquals(3, instance.maxFeasibleTypeRequest());
+//
+//		builder.addGuest(new Guest(5, 5, 1));
+//		instance= builder.build();
+//
+//		assertEquals(false, instance.feasible());
 
-		builder.addGuest(new Guest(4, 1, 1));
-		instance= builder.build();
-
-		assertEquals(false, instance.feasible());
-		assertEquals(-1, instance.maxFeasibleTypeRequest());
-
-		builder.addRoom(new Room(4, 1, 1, 1));
-		builder.addRoom(new Room(5, 1, 1, 1));
-		instance= builder.build();
-
-		assertEquals(true, instance.feasible());
-		assertEquals(3, instance.maxFeasibleTypeRequest());
-
-		builder.addGuest(new Guest(5, 5, 1));
-		instance= builder.build();
-
-		assertEquals(false, instance.feasible());
-
-		Builder builder2= new Builder("name", 3);
-		builder2.addRoom(new Room(1, 2, 1, 1));
-		builder2.addRoom(new Room(2, 2, 1, 1));
-		builder2.addRoom(new Room(3, 2, 1, 1));
-		builder2.addRoom(new Room(4, 3, 1, 1));
+		Hotel.Builder builder2Hotel= new Hotel.Builder();
+		builder2Hotel.setH(3);
+		builder2Hotel.addRoom(new Room(1, 2, 1, 1, 1));
+		builder2Hotel.addRoom(new Room(2, 2, 1, 1, 1));
+		builder2Hotel.addRoom(new Room(3, 2, 1, 1, 1));
+		builder2Hotel.addRoom(new Room(4, 3, 1, 1, 1));
+		Instance.Builder builder2= new Instance.Builder(builder2Hotel.build());
 		builder2.addGuest(new Guest(1, 1, 1));
 		builder2.addGuest(new Guest(2, 3, 1));
 		builder2.addGuest(new Guest(3, 3, 1));
@@ -293,10 +370,13 @@ class Tester {
 
 		// TESTS INSTANCE EQUALS METHOD
 
-		Builder primaryBuilder= new Builder("build", 3);
-		primaryBuilder.addRoom(new Room(1, 3, 1, 2));
-		primaryBuilder.addRoom(new Room(2, 2, 4, 2));
-		primaryBuilder.addRoom(new Room(3, 1, 2, 3));
+		Hotel.Builder primaryBuilderHotel= new Hotel.Builder();
+		primaryBuilderHotel.setH(3);
+		primaryBuilderHotel.addRoom(new Room(1, 3, 1, 1, 2));
+		primaryBuilderHotel.addRoom(new Room(2, 2, 1, 4, 2));
+		primaryBuilderHotel.addRoom(new Room(3, 1, 1, 2, 3));
+		Hotel primaryHotel= primaryBuilderHotel.build();
+		Instance.Builder primaryBuilder= new Instance.Builder(primaryHotel);
 		primaryBuilder.addGuest(new Guest(1, 1, 2));
 		primaryBuilder.addGuest(new Guest(2, 1, 4));
 		primaryBuilder.addGuest(new Guest(3, 1, 3));
@@ -313,12 +393,8 @@ class Tester {
 
 		Instance primary= primaryBuilder.build();
 
-		Builder compareBuilder= new Builder("build", 3);
-		compareBuilder.addRoom(new Room(3, 1, 2, 3));
-		compareBuilder.addRoom(new Room(1, 3, 1, 2));
+		Instance.Builder compareBuilder= new Instance.Builder(primaryHotel);
 		compareBuilder.addGuest(new Guest(2, 1, 4));
-		Instance differentRooms= compareBuilder.build();
-		compareBuilder.addRoom(new Room(2, 2, 4, 2));
 		compareBuilder.addGuest(new Guest(1, 1, 2));
 		Instance differentGuests= compareBuilder.build();
 		compareBuilder.addGuest(new Guest(3, 1, 3));
@@ -335,52 +411,41 @@ class Tester {
 		compareBuilder.addWeight(compareBuilder.guest(1), compareBuilder.room(3), 0.7);
 		Instance compare= compareBuilder.build();
 
-		compareBuilder= new Builder("dif", 3);
-		compareBuilder.addRoom(new Room(1, 1, 1, 1));
-		compareBuilder.addGuest(new Guest(1, 1, 1));
-		Instance differentName= compareBuilder.build();
-		compareBuilder= new Builder("build", 2);
-		compareBuilder.addRoom(new Room(1, 1, 1, 1));
-		compareBuilder.addGuest(new Guest(1, 1, 1));
-		Instance differentTeamSize= compareBuilder.build();
-
 		assertEquals(false, primary.equals(null));
 		assertEquals(false, primary.equals(compareBuilder));
-		assertEquals(false, primary.equals(differentName));
-		assertEquals(false, primary.equals(differentTeamSize));
-		assertEquals(false, primary.equals(differentRooms));
 		assertEquals(false, primary.equals(differentGuests));
 		assertEquals(false, primary.equals(differentWeights));
 		assertEquals(compare, primary);
 
+		// TESTS WRITING CSV METHOD
+		primary.writeCSV();
+		Instance fromCSV= InstanceFactory.readCSV(primary.hotel().id(), primary.id());
+		assertEquals(fromCSV, primary);
+
 		// TESTS BUILDER BUILD METHOD (COPY)
 
-		assertThrows(IllegalArgumentException.class, () -> { new Instance.Builder("", primary); });
-		assertThrows(IllegalArgumentException.class, () -> { new Instance.Builder(null, primary); });
-		assertThrows(IllegalArgumentException.class, () -> { new Instance.Builder("copy", null); });
-		Instance copy= new Builder("copy", primary).build();
+		assertThrows(IllegalArgumentException.class, () -> { new Instance.Builder((Hotel) null); });
+		assertThrows(IllegalArgumentException.class, () -> { new Instance.Builder((Instance) null); });
+		Instance copy= new Instance.Builder(primary).build();
 		assertEquals(primary, copy);
 
 		// TESTS 1 ROOM MINIMUM AND 1 GUEST MINIMUM
 
-		Builder noRooms= new Builder("dif", 3);
-		noRooms.addGuest(new Guest(1, 1, 1));
-		assertThrows(IllegalArgumentException.class, () -> { noRooms.build(); });
-		Builder noGuests= new Builder("dif", 3);
-		noGuests.addRoom(new Room(1, 1, 1, 1));
+		Instance.Builder noGuests= new Instance.Builder(primaryHotel);
 		assertThrows(IllegalArgumentException.class, () -> { noGuests.build(); });
 
 		// TESTS INSTANCE TOSTRING METHOD
 
 		StringBuilder sb= new StringBuilder();
-		sb.append("ROOMS\n");
-		sb.append("------------------------------------------\n");
-		sb.append("ROOM	TYPE	CHECKOUT	CLEAN TIME\n");
-		sb.append("1    	3    	1       	2         \n");
-		sb.append("2    	2    	4       	2         \n");
-		sb.append("3    	1    	2       	3         \n");
-		sb.append("------------------------------------------\n\n");
-		sb.append("GUESTS\n");
+		sb.append("HOTEL\n");
+		sb.append("----------------------------------------------------------\n");
+		sb.append("ROOM	TYPE	QUALITY 	CHECKOUT	CLEAN TIME\n");
+		sb.append("1    	3    	1.000   	1       	2         \n");
+		sb.append("2    	2    	1.000   	4       	2         \n");
+		sb.append("3    	1    	1.000   	2       	3         \n");
+		sb.append("----------------------------------------------------------\n");
+		sb.append("Housekeeping Team Size: " + 3 + "\n\n");
+		sb.append("ARRIVALS\n");
 		sb.append("-----------------------\n");
 		sb.append("GUEST	TYPE	ARRIVAL\n");
 		sb.append("1     	1    	2      \n");
@@ -394,7 +459,6 @@ class Tester {
 		sb.append("2    0.9  0.4  0.3  \n");
 		sb.append("3    0.8  1.0  0.0  \n");
 		sb.append("------------------\n");
-		sb.append("Housekeeping Team Size: 3\n");
 		assertEquals(sb.toString(), primary.toString());
 	}
 
@@ -402,14 +466,17 @@ class Tester {
 	void testInstanceFactory() {
 
 		// Build test3 manually for comparison
-		Instance.Builder builder= new Builder("test3", 3);
+		Hotel.Builder builderHotel= new Hotel.Builder();
+		builderHotel.setH(3);
 
-		builder.addRoom(new Room(1, 1, 2, 2));
-		builder.addRoom(new Room(2, 1, 2, 2));
-		builder.addRoom(new Room(3, 1, 4, 2));
-		builder.addRoom(new Room(4, 1, 3, 2));
-		builder.addRoom(new Room(5, 2, 5, 2));
-		builder.addRoom(new Room(6, 3, 1, 2));
+		builderHotel.addRoom(new Room(1, 1, 1, 2, 2));
+		builderHotel.addRoom(new Room(2, 1, 1, 2, 2));
+		builderHotel.addRoom(new Room(3, 1, 1, 4, 2));
+		builderHotel.addRoom(new Room(4, 1, 1, 3, 2));
+		builderHotel.addRoom(new Room(5, 2, 1, 5, 2));
+		builderHotel.addRoom(new Room(6, 3, 1, 1, 2));
+
+		Instance.Builder builder= new Instance.Builder(builderHotel.build());
 
 		builder.addGuest(new Guest(1, 1, 4));
 		builder.addGuest(new Guest(2, 1, 4));
@@ -458,27 +525,25 @@ class Tester {
 		Instance instance= builder.build();
 
 		// tests read CSV method
-		assertThrows(IllegalArgumentException.class, () -> { InstanceFactory.readCSV((String) null, 3); });
-		assertThrows(IllegalArgumentException.class, () -> { InstanceFactory.readCSV("", 3); });
-		assertThrows(IllegalArgumentException.class, () -> { InstanceFactory.readCSV("test3", 0); });
-		assertEquals(instance, InstanceFactory.readCSV("test3", 3));
+		assertEquals(instance, test[5]);
 
 		// tests write CSV method
 		instance.writeCSV();
-		assertEquals(instance, InstanceFactory.readCSV("test3", 3));
+		assertEquals(instance, test[5]);
 
 		// tests create random instance method
-		assertThrows(IllegalArgumentException.class, () -> { InstanceFactory.createRandom(null, 10); });
-		assertThrows(IllegalArgumentException.class, () -> { InstanceFactory.createRandom("", 10); });
-		assertThrows(IllegalArgumentException.class, () -> { InstanceFactory.createRandom("randTest", 0); });
-		Instance rand= InstanceFactory.createRandom("randTest", 100);
+		assertThrows(IllegalArgumentException.class, () -> { InstanceFactory.randInstance(0); });
+		InstanceFactory.randInstance(100);
 
 		// tests add guest method
-		Instance.Builder builder2= new Builder("test3", 3);
+		Hotel.Builder builder2Hotel= new Hotel.Builder();
 
-		builder2.addRoom(new Room(1, 1, 2, 2));
-		builder2.addRoom(new Room(2, 3, 2, 2));
-		builder2.addRoom(new Room(3, 2, 4, 2));
+		builder2Hotel.setH(3);
+		builder2Hotel.addRoom(new Room(1, 1, 1, 2, 2));
+		builder2Hotel.addRoom(new Room(2, 3, 1, 2, 2));
+		builder2Hotel.addRoom(new Room(3, 2, 1, 4, 2));
+
+		Instance.Builder builder2= new Instance.Builder(builder2Hotel.build());
 
 		builder2.addGuest(new Guest(1, 1, 4));
 		builder2.addGuest(new Guest(2, 3, 4));
@@ -491,10 +556,8 @@ class Tester {
 		builder2.addWeight(builder2.guest(2), builder2.room(3), 0.3);
 
 		Instance before= builder2.build();
-		assertThrows(IllegalArgumentException.class, () -> { InstanceFactory.addGuestTo(null, "copy"); });
-		assertThrows(IllegalArgumentException.class, () -> { InstanceFactory.addGuestTo(before, null); });
-		assertThrows(IllegalArgumentException.class, () -> { InstanceFactory.addGuestTo(before, ""); });
-		Instance after= InstanceFactory.addGuestTo(before, "copy");
+		assertThrows(IllegalArgumentException.class, () -> { InstanceFactory.addGuestTo(null); });
+		Instance after= InstanceFactory.addGuestTo(before);
 		assertEquals(2, before.maxFeasibleTypeRequest());
 		int newGuestType= after.guest(3).type();
 		assertEquals(true, newGuestType == 1 || newGuestType == 2);
@@ -507,7 +570,7 @@ class Tester {
 		assertThrows(IllegalArgumentException.class, () -> { new Assignment(null); });
 
 		// tests assign method
-		Instance instance= InstanceFactory.readCSV("test3", 2);
+		Instance instance= test[2];
 		Assignment assignment= new Assignment(instance);
 
 		// tests isAssignmentFor method
@@ -515,7 +578,7 @@ class Tester {
 		assertEquals(false, assignment.isAssignmentFor(null));
 
 		assertThrows(IllegalArgumentException.class,
-			() -> { assignment.assign(instance.guest(1), new Room(2, 3, 4, 1)); });
+			() -> { assignment.assign(instance.guest(1), new Room(2, 3, 1, 4, 1)); });
 		assertThrows(IllegalArgumentException.class,
 			() -> { assignment.assign(new Guest(7, 2, 1), instance.room(1)); });
 		assertThrows(IllegalArgumentException.class,
@@ -602,7 +665,7 @@ class Tester {
 	@Test
 	void testAssignmentStat() {
 
-		Instance instance= InstanceFactory.readCSV("test3", 2);
+		Instance instance= test[2];
 		Assignment assignment= new Assignment(instance);
 
 		assignment.assign(instance.guest(6), instance.room(1));
@@ -635,10 +698,10 @@ class Tester {
 	@Test
 	void testHousekeepingSchedule() {
 
-		Instance instance= InstanceFactory.readCSV("test1", 3);
+		Instance instance= test[0];
 		assertThrows(IllegalArgumentException.class, () -> { new Schedule(null); });
 		Schedule schedule= new Schedule(instance);
-		assertEquals(false, schedule.isScheduleFor(InstanceFactory.readCSV("test2", 3)));
+		assertEquals(false, schedule.isScheduleFor(test[1]));
 
 		ArrayList<Room> rooms= instance.rooms();
 		Room room1= rooms.get(0);
@@ -647,7 +710,7 @@ class Tester {
 		Room room4= rooms.get(3);
 		Room room5= rooms.get(4);
 		Room room6= rooms.get(5);
-		Room room7= new Room(7, 2, 1, 2);
+		Room room7= new Room(7, 2, 1, 1, 2);
 
 		ArrayList<Housekeeper> housekeepers= schedule.getHousekeepers();
 		Housekeeper housekeeper1= housekeepers.get(0);
@@ -719,7 +782,7 @@ class Tester {
 	@Test
 	void testScheduleStats() {
 
-		Instance instance= InstanceFactory.readCSV("test1", 3);
+		Instance instance= test[0];
 		Schedule schedule= new Schedule(instance);
 
 		ArrayList<Room> rooms= instance.rooms();
@@ -759,8 +822,8 @@ class Tester {
 	@Test
 	void testSolution() {
 
-		Instance instance= InstanceFactory.readCSV("test3", 2);
-		Instance dummyInstance= InstanceFactory.readCSV("test2", 2);
+		Instance instance= test[2];
+		Instance dummyInstance= test[3];
 
 		Linear assignmentSolver= new Linear();
 		FirstAvailable housekeepingSolver= new FirstAvailable();
@@ -795,7 +858,7 @@ class Tester {
 	@Test
 	void testSolutionStats() {
 
-		Instance instance= InstanceFactory.readCSV("test3", 2);
+		Instance instance= test[2];
 
 		Linear assignmentSolver= new Linear();
 		FirstAvailable housekeepingSolver= new FirstAvailable();
@@ -827,7 +890,7 @@ class Tester {
 	@Test
 	void testAMPLHelper() {
 
-		Instance instance= InstanceFactory.readCSV("test3", 2);
+		Instance instance= test[2];
 
 		assertThrows(IllegalArgumentException.class, () -> { AMPLHelper.runScheduleIP(instance, null); });
 		assertThrows(IllegalArgumentException.class, () -> { AMPLHelper.runScheduleIP(instance, ""); });
@@ -870,7 +933,7 @@ class Tester {
 	void testLinear() {
 
 		Linear solver= new Linear();
-		Instance instance= InstanceFactory.readCSV("test3", 2);
+		Instance instance= test[2];
 		System.out.println(instance);
 		assertThrows(IllegalArgumentException.class, () -> { solver.solve(null); });
 		Assignment assignment= solver.solve(instance);
@@ -885,12 +948,10 @@ class Tester {
 	void testBestFirst() {
 
 		BestFirst solver= new BestFirst();
-		Instance instance= InstanceFactory.readCSV("test3", 2);
+		Instance instance= test[2];
 		assertThrows(IllegalArgumentException.class, () -> { solver.solve(null); });
 		Assignment assignment= solver.solve(instance);
-		System.out.println(assignment);
-		System.out.println(instance);
-		assertEquals(0.748, assignment.satisfactionStats().getMean(), 0.01);
+		assertEquals(0.75, assignment.satisfactionStats().getMean(), 0.01);
 		assertEquals(0.33, assignment.satisfactionStats().getMin(), 0.01);
 		assertEquals(1, assignment.upgradeStats().getSum());
 		assertEquals("Best First", solver.toString());
@@ -901,12 +962,11 @@ class Tester {
 	void testWorstFirst() {
 
 		WorstFirst solver= new WorstFirst();
-		Instance instance= InstanceFactory.readCSV("test3", 2);
+		Instance instance= test[2];
 		assertThrows(IllegalArgumentException.class, () -> { solver.solve(null); });
 		Assignment assignment= solver.solve(instance);
-		System.out.println(assignment);
-		assertEquals(0.387, assignment.satisfactionStats().getMean(), 0.01);
-		assertEquals(0.33, assignment.satisfactionStats().getMin(), 0.01);
+		assertEquals(0.527, assignment.satisfactionStats().getMean(), 0.01);
+		assertEquals(0, assignment.satisfactionStats().getMin(), 0.01);
 		assertEquals(1, assignment.upgradeStats().getSum());
 		assertEquals("Worst First", solver.toString());
 
@@ -918,7 +978,7 @@ class Tester {
 		assertThrows(IllegalArgumentException.class, () -> { new AssignmentIPSolver(null); });
 		AssignmentIPSolver solver= new AssignmentIPSolver("Mean_Satisfaction");
 		assertThrows(IllegalArgumentException.class, () -> { solver.solve(null); });
-		Instance instance= InstanceFactory.readCSV("test3", 2);
+		Instance instance= test[2];
 		Assignment assignment= solver.solve(instance);
 		assertEquals((double) 31 / 36, assignment.satisfactionStats().getMean(), 0.01);
 		assertEquals(0.50, assignment.satisfactionStats().getMin(), 0.01);
@@ -929,7 +989,7 @@ class Tester {
 	void testMinSatIP() {
 
 		AssignmentIPSolver solver= new AssignmentIPSolver("Min_Satisfaction");
-		Instance instance= InstanceFactory.readCSV("test3", 2);
+		Instance instance= test[2];
 		Assignment assignment= solver.solve(instance);
 		assertEquals(0.50, assignment.satisfactionStats().getMin(), 0.01);
 		assertEquals("Min_Satisfaction", solver.toString());
@@ -940,7 +1000,7 @@ class Tester {
 	void testSatisfactionIP() {
 
 		AssignmentIPSolver solver= new AssignmentIPSolver("Satisfaction");
-		Instance instance= InstanceFactory.readCSV("test3", 2);
+		Instance instance= test[2];
 		Assignment assignment= solver.solve(instance);
 		assertEquals((double) 31 / 36, assignment.satisfactionStats().getMean(), 0.01);
 		assertEquals(0.50, assignment.satisfactionStats().getMin(), 0.01);
@@ -952,7 +1012,7 @@ class Tester {
 	void testUpgrades() {
 
 		AssignmentIPSolver solver= new AssignmentIPSolver("Upgrades");
-		Instance instance= InstanceFactory.readCSV("test3", 2);
+		Instance instance= test[2];
 		Assignment assignment= solver.solve(instance);
 		assertEquals(1, assignment.upgradeStats().getSum());
 		assertEquals("Upgrades", solver.toString());
@@ -967,7 +1027,7 @@ class Tester {
 		assertThrows(IllegalArgumentException.class, () -> { new AssignmentSTScheduleIP(null, "Mean_Wait_Time"); });
 		AssignmentSTScheduleIP solver= new AssignmentSTScheduleIP(housekeepingSolver, "Mean_Wait_Time");
 		assertThrows(IllegalArgumentException.class, () -> { solver.solve(null); });
-		Instance instance= InstanceFactory.readCSV("test3", 2);
+		Instance instance= test[2];
 		Solution solution= solver.solve(instance);
 		assertEquals(19, solution.tardinessStats().getSum());
 		assertEquals("Mean_Wait_Time ST Sum_Completion_Time", solver.toString());
@@ -979,7 +1039,7 @@ class Tester {
 
 		ScheduleIPSolver housekeepingSolver= new ScheduleIPSolver("Sum_Completion_Time");
 		AssignmentSTScheduleIP solver= new AssignmentSTScheduleIP(housekeepingSolver, "Max_Wait_Time");
-		Instance instance= InstanceFactory.readCSV("test3", 2);
+		Instance instance= test[2];
 		Solution solution= solver.solve(instance);
 		assertEquals(4, solution.tardinessStats().getMax());
 		assertEquals("Max_Wait_Time ST Sum_Completion_Time", solver.toString());
@@ -992,7 +1052,7 @@ class Tester {
 		ScheduleIPSolver housekeepingSolver= new ScheduleIPSolver("Sum_Completion_Time");
 		AssignmentSTScheduleIP solver= new AssignmentSTScheduleIP(housekeepingSolver,
 			"Mean_Satisfaction_And_Wait_Time");
-		Instance instance= InstanceFactory.readCSV("test3", 2);
+		Instance instance= test[2];
 		Solution solution= solver.solve(instance);
 		assertEquals(19, solution.tardinessStats().getSum());
 		assertEquals((double) 31 / 36, solution.assignment().satisfactionStats().getMean(), 0.01);
@@ -1005,7 +1065,7 @@ class Tester {
 	void testMaxMeanSatSTMinIP() {
 
 		MaxMeanSatSTMinIP solver= new MaxMeanSatSTMinIP();
-		Instance instance= InstanceFactory.readCSV("test3", 2);
+		Instance instance= test[2];
 		assertThrows(IllegalArgumentException.class, () -> { solver.solve(null); });
 		Assignment assignment= solver.solve(instance);
 
@@ -1016,7 +1076,8 @@ class Tester {
 		AssignmentIPSolver minSat= new AssignmentIPSolver("Min_Satisfaction");
 
 		for (int i= 0; i < t; i++ ) {
-			instance= InstanceFactory.createRandom("testMaxMeanSatSTMinIP", n);
+			System.out.println("hello");
+			instance= InstanceFactory.randInstance(n);
 			double realMin= minSat.solve(instance).satisfactionStats().getMin();
 			double min= solver.solve(instance).satisfactionStats().getMin();
 			assertEquals(true, realMin >= min);
@@ -1032,7 +1093,7 @@ class Tester {
 		assertThrows(IllegalArgumentException.class, () -> { new MinUpgradesSTSatIP(-1, 1); });
 		assertThrows(IllegalArgumentException.class, () -> { new MinUpgradesSTSatIP(2, 1); });
 		MinUpgradesSTSatIP solver= new MinUpgradesSTSatIP(1, 1);
-		Instance instance= InstanceFactory.readCSV("test3", 2);
+		Instance instance= test[2];
 		assertThrows(IllegalArgumentException.class, () -> { solver.solve(null); });
 		Assignment assignment= solver.solve(instance);
 
@@ -1044,7 +1105,7 @@ class Tester {
 		MaxMeanSatSTMinIP avgAndMin= new MaxMeanSatSTMinIP();
 
 		for (int i= 0; i < t; i++ ) {
-			instance= InstanceFactory.createRandom("testMinUpgradesSTSatIP", n);
+			instance= InstanceFactory.randInstance(n);
 			Assignment compare= avgAndMin.solve(instance);
 			double realMin= compare.satisfactionStats().getMin();
 			double realAvg= compare.satisfactionStats().getMean();
@@ -1061,7 +1122,7 @@ class Tester {
 	void testOnlineMeanSatIP() {
 
 		OnlineMeanSatIP solver= new OnlineMeanSatIP();
-		Instance instance= InstanceFactory.readCSV("test3", 2);
+		Instance instance= test[2];
 		assertThrows(IllegalArgumentException.class, () -> { solver.solve(null); });
 		Assignment assignment= solver.solve(instance);
 
@@ -1071,7 +1132,7 @@ class Tester {
 		AssignmentIPSolver maxAvg= new AssignmentIPSolver("Mean_Satisfaction");
 
 		for (int i= 0; i < t; i++ ) {
-			instance= InstanceFactory.createRandom("testOnlineMeanSatIP", n);
+			instance= InstanceFactory.randInstance(n);
 			double realAvg= maxAvg.solve(instance).satisfactionStats().getMean();
 			double avg= solver.solve(instance).satisfactionStats().getMean();
 			assertEquals(true, Math.abs(realAvg - avg) <= 0.01);
@@ -1086,7 +1147,7 @@ class Tester {
 		assertThrows(IllegalArgumentException.class, () -> { new SuggestiveMeanSatIP(2); });
 
 		SuggestiveMeanSatIP solver= new SuggestiveMeanSatIP(1);
-		Instance instance= InstanceFactory.readCSV("test3", 2);
+		Instance instance= test[2];
 		assertThrows(IllegalArgumentException.class, () -> { solver.solve(null); });
 		Assignment assignment= solver.solve(instance);
 
@@ -1096,7 +1157,7 @@ class Tester {
 		AssignmentIPSolver maxAvg= new AssignmentIPSolver("Mean_Satisfaction");
 
 		for (int i= 0; i < t; i++ ) {
-			instance= InstanceFactory.createRandom("testSuggestiveMeanSatIP", n);
+			instance= InstanceFactory.randInstance(n);
 			double realAvg= maxAvg.solve(instance).satisfactionStats().getMean();
 			double avg= solver.solve(instance).satisfactionStats().getMean();
 			assertEquals(realAvg, avg, 0.01);
@@ -1111,10 +1172,9 @@ class Tester {
 			Instance instance= null;
 			Instance instanceAddOne= null;
 			while (instanceAddOne == null) {
-				instance= InstanceFactory.createRandom("compareAddGuestBefore", n);
-				instanceAddOne= InstanceFactory.addGuestTo(instance, "compareAddGuestAfter");
+				instance= InstanceFactory.randInstance(n);
+				instanceAddOne= InstanceFactory.addGuestTo(instance);
 			}
-
 			Assignment assignment= new AssignmentIPSolver("Mean_Satisfaction").solve(instance);
 			PreserveEdgesMeanSat solver= new PreserveEdgesMeanSat(instance, assignment);
 			Assignment assignmentAddOne= solver.solve(instanceAddOne);
@@ -1135,7 +1195,7 @@ class Tester {
 	void testFirstAvailable() {
 
 		FirstAvailable solver= new FirstAvailable();
-		Instance instance= InstanceFactory.readCSV("test1", 3);
+		Instance instance= test[0];
 		assertThrows(IllegalArgumentException.class, () -> { solver.solve(null); });
 		Schedule schedule= solver.solve(instance);
 
@@ -1151,8 +1211,8 @@ class Tester {
 	@Test
 	void testNeededFirst() {
 
-		Instance instance4= InstanceFactory.readCSV("test4", 2);
-		Instance instance5= InstanceFactory.readCSV("test5", 2);
+		Instance instance4= test[3];
+		Instance instance5= test[4];
 		NeededFirst needed= new NeededFirst();
 		assertThrows(IllegalArgumentException.class, () -> { needed.solve(null); });
 		Schedule schedule4= needed.solve(instance4);
@@ -1169,8 +1229,8 @@ class Tester {
 	@Test
 	void testNeededFirstNoWait() {
 
-		Instance instance4= InstanceFactory.readCSV("test4", 2);
-		Instance instance5= InstanceFactory.readCSV("test5", 2);
+		Instance instance4= test[3];
+		Instance instance5= test[4];
 		NeededFirstNoWait neededNoWait= new NeededFirstNoWait();
 		assertThrows(IllegalArgumentException.class, () -> { neededNoWait.solve(null); });
 		Schedule schedule4= neededNoWait.solve(instance4);
@@ -1190,7 +1250,7 @@ class Tester {
 		assertThrows(IllegalArgumentException.class, () -> { new ScheduleIPSolver(null); });
 		ScheduleIPSolver solver= new ScheduleIPSolver("Sum_Completion_Time");
 		assertThrows(IllegalArgumentException.class, () -> { solver.solve(null); });
-		Instance instance= InstanceFactory.readCSV("test3", 3);
+		Instance instance= test[5];
 		FirstAvailable compare= new FirstAvailable();
 		Schedule schedule= solver.solve(instance);
 
@@ -1199,7 +1259,7 @@ class Tester {
 		assertEquals("Sum_Completion_Time", solver.toString());
 
 		for (int i= 0; i < t; i++ ) {
-			Instance inst= InstanceFactory.createRandom("rand", n);
+			Instance inst= InstanceFactory.randInstance(n);
 			int minSum= (int) solver.solve(inst).completionStats().getSum();
 			int sum= (int) compare.solve(inst).completionStats().getSum();
 			assertEquals(true, minSum - sum <= 0);
@@ -1209,7 +1269,7 @@ class Tester {
 	@Test
 	void testMinMakespan() {
 
-		Instance instance= InstanceFactory.readCSV("test3", 3);
+		Instance instance= test[5];
 		ScheduleIPSolver solver= new ScheduleIPSolver("Makespan");
 		FirstAvailable compare= new FirstAvailable();
 		Schedule schedule= solver.solve(instance);
@@ -1218,7 +1278,7 @@ class Tester {
 		assertEquals("Makespan", solver.toString());
 
 		for (int i= 0; i < t; i++ ) {
-			Instance inst= InstanceFactory.createRandom("rand", n);
+			Instance inst= InstanceFactory.randInstance(n);
 			int minMakespan= (int) solver.solve(inst).completionStats().getMax();
 			int makespan= (int) compare.solve(inst).completionStats().getMax();
 			assertEquals(true, minMakespan - makespan <= 0);
@@ -1233,7 +1293,7 @@ class Tester {
 		assertThrows(IllegalArgumentException.class, () -> { new ScheduleSTAssignmentIP(null, "Sum_Tardiness"); });
 		ScheduleSTAssignmentIP solver= new ScheduleSTAssignmentIP(assignmentSolver, "Sum_Tardiness");
 		assertThrows(IllegalArgumentException.class, () -> { solver.solve(null); });
-		Instance instance= InstanceFactory.readCSV("test3", 2);
+		Instance instance= test[2];
 		Solution solution= solver.solve(instance);
 		assertEquals(19, solution.tardinessStats().getSum());
 		assertEquals("Sum_Tardiness ST Mean_Satisfaction", solver.toString());
@@ -1243,7 +1303,7 @@ class Tester {
 	void testMaxTardinessSchedule() {
 		AssignmentIPSolver assignmentSolver= new AssignmentIPSolver("Mean_Satisfaction");
 		ScheduleSTAssignmentIP solver= new ScheduleSTAssignmentIP(assignmentSolver, "Max_Tardiness");
-		Instance instance= InstanceFactory.readCSV("test3", 2);
+		Instance instance= test[2];
 		Solution solution= solver.solve(instance);
 		assertEquals(4, solution.tardinessStats().getMax());
 		assertEquals("Max_Tardiness ST Mean_Satisfaction", solver.toString());
@@ -1254,7 +1314,7 @@ class Tester {
 
 		FirstAvailable housekeepingSolver= new FirstAvailable();
 		FirstRoom assignmentSolver= new FirstRoom(housekeepingSolver);
-		Instance instance= InstanceFactory.readCSV("test3", 3);
+		Instance instance= test[5];
 		assertThrows(IllegalArgumentException.class, () -> { new FirstRoom(null); });
 		assertThrows(IllegalArgumentException.class, () -> { assignmentSolver.solve(null); });
 		Solution solution= assignmentSolver.solve(instance);
@@ -1282,7 +1342,7 @@ class Tester {
 		assertThrows(IllegalArgumentException.class, () -> { new SolutionIPSolver(null); });
 		SolutionIPSolver solver= new SolutionIPSolver("Sum_Tardiness");
 		assertThrows(IllegalArgumentException.class, () -> { solver.solve(null); });
-		Instance instance= InstanceFactory.readCSV("test3", 2);
+		Instance instance= test[2];
 		Solution solution= solver.solve(instance);
 		assertEquals(19, solution.tardinessStats().getSum());
 		assertEquals("Solution (Sum_Tardiness)", solver.toString());
@@ -1291,7 +1351,7 @@ class Tester {
 	@Test
 	void testMaxTardiness() {
 		SolutionIPSolver solver= new SolutionIPSolver("Max_Tardiness");
-		Instance instance= InstanceFactory.readCSV("test3", 2);
+		Instance instance= test[2];
 		Solution solution= solver.solve(instance);
 		assertEquals(4, solution.tardinessStats().getMax());
 		assertEquals("Solution (Max_Tardiness)", solver.toString());
@@ -1301,7 +1361,7 @@ class Tester {
 	void testMeanSatisfactionSum_Tardiness() {
 
 		SolutionIPSolver solver= new SolutionIPSolver("Mean_Satisfaction_And_Sum_Tardiness");
-		Instance instance= InstanceFactory.readCSV("test3", 2);
+		Instance instance= test[2];
 		Solution solution= solver.solve(instance);
 		assertEquals(19, solution.tardinessStats().getSum());
 		assertEquals((double) 31 / 36, solution.assignment().satisfactionStats().getMean(), 0.01);

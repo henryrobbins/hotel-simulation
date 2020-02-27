@@ -36,7 +36,7 @@ public class SimInstanceSolvers<T extends Decision> extends Simulation {
 	public SimInstanceSolvers(ArrayList<Solver<T>> solvers, ArrayList<Statistic<T>> stats, Instance instance,
 		File dir,
 		JProgressBar progress) {
-		super(dir, instance.name(), progress);
+		super(dir, String.valueOf(instance.id()), progress);
 		this.instance= instance;
 		this.solvers= solvers;
 		this.stats= stats;

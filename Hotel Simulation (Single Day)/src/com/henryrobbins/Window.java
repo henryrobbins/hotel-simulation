@@ -294,7 +294,7 @@ public class Window extends JFrame {
 
 			// Get current fields set by user
 			File simDir= simFileChooser.getSelectedFile();
-			Instance instance= InstanceFactory.readCSV(simDir.toPath(), 1);
+			Instance instance= InstanceFactory.readCSV(simDir.toPath());
 			File resultDir= resultFileChooser.getSelectedFile();
 			String name= fileNameField.getText();
 			int[] sizes= {};

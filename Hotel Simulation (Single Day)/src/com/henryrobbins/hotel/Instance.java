@@ -13,22 +13,16 @@ import java.util.HashSet;
 
 import org.apache.commons.collections4.map.MultiKeyMap;
 
-/** Maintains an immutable list of hotel rooms and guests arriving over a single day horizon. <br>
- * Furthermore, stores the satisfaction of every guest-room pair. An instance is analogous <br>
- * to a bipartite graph in which the left nodes are guests, the right nodes are rooms, <br>
- * and the edges between them have weights corresponding to the satisfaction of that <br>
- * assignment. Additionally, an instance stores the size of the housekeeping team. */
+/** Maintains a hotel and a single day of hotel guest arrivals. Furthermore, stores the <br>
+ * satisfaction of every guest-room pair. An instance is analogous to a bipartite graph in <br>
+ * which the left nodes are guests, the right nodes are rooms, and the edges between them <br>
+ * have weights corresponding to the satisfaction of that assignment. Additionally, an <br>
+ * instance stores the size of the housekeeping team. */
 public final class Instance {
 
-	/** The name of the instance (for CSV file access and naming purposes) */
-	private String name;
-	/** The list of hotel rooms (at least one room, unique room numbers, fully accommodate guests) */
-	private final ArrayList<Room> rooms;
-	/** The map of unique room numbers to rooms */
-	private final HashMap<Integer, Room> roomMap;
-	/** The number of rooms of a given type */
-	private final HashMap<Integer, Integer> typeFrequency;
-	/** The list of hotel guests (at least one guest, must have unique guest IDs) */
+	/** The hotel */
+	private final Hotel hotel;
+	/** The list of hotel guests (must have unique guest IDs) */
 	private final ArrayList<Guest> guests;
 	/** The map of unique guest IDs to guests */
 	private final HashMap<Integer, Guest> guestMap;
@@ -36,12 +30,15 @@ public final class Instance {
 	private final HashMap<Integer, Integer> requestFrequency;
 	/** The weight of every guest-room pair */
 	private final MultiKeyMap<Object, Double> weights;
-	/** The size of the housekeeping team (must be greater than 0) */
-	private final int teamSize;
 
-	/** Return the name of the instance */
-	public String name() {
-		return new String(name);
+	/** Return the unique id of this instance */
+	public int id() {
+		return System.identityHashCode(this);
+	}
+
+	/** Return the hotel in this instance */
+	public Hotel hotel() {
+		return hotel;
 	}
 
 	/** Return the list of guests */
@@ -54,14 +51,19 @@ public final class Instance {
 		return guestMap.get(id);
 	}
 
+	/** Return the room type request frequencies */
+	public HashMap<Integer, Integer> reqeustFreq() {
+		return requestFrequency;
+	}
+
 	/** Return the list of rooms */
 	public ArrayList<Room> rooms() {
-		return new ArrayList<>(rooms);
+		return new ArrayList<>(hotel.rooms());
 	}
 
 	/** Return the room with the given room number. Return null if no room with this number. */
 	public Room room(int num) {
-		return roomMap.get(num);
+		return hotel.room(num);
 	}
 
 	/** Return the weight of the given guest-room pair
@@ -82,7 +84,7 @@ public final class Instance {
 	public MultiKeyMap<Object, Double> weights() {
 		MultiKeyMap<Object, Double> weights= new MultiKeyMap<>();
 		for (Guest guest : guests) {
-			for (Room room : rooms) {
+			for (Room room : hotel.rooms()) {
 				weights.put(guest, room, this.weights.get(guest, room));
 			}
 		}
@@ -90,25 +92,25 @@ public final class Instance {
 	}
 
 	/** Return the size of the housekeeping team */
-	public int teamSize() {
-		return teamSize;
+	public int getH() {
+		return hotel.getH();
 	}
 
 	/** Return the number of room types in this instance */
 	public int typeSize() {
-		return typeFrequency.size();
+		return hotel.typeFreq().size();
 	}
 
 	/** Return the maximum type t such that a guest requesting type t^* <= t can be accommodated. <br>
 	 * Hence, 0 is returned if no guest can be added. Return -1 if currently infeasible */
 	public int maxFeasibleTypeRequest() {
 		// If the highest requested type is larger than the highest available type, clearly infeasible
-		int maxType= Collections.max(typeFrequency.keySet());
+		int maxType= Collections.max(hotel.typeFreq().keySet());
 		int maxRequest= Collections.max(requestFrequency.keySet());
 		if (maxType < maxRequest) return -1;
 
 		// Set the number of available rooms of type 1 or greater
-		int available= rooms.size();
+		int available= hotel.rooms().size();
 		// Set the number of requests for rooms of type 1 or greater
 		int requests= guests.size();
 		// Set the minimum room type where available = requests (no slack)
@@ -120,7 +122,7 @@ public final class Instance {
 			if (available < requests) return -1;
 			// Identify the lowest tier in which there is no slack
 			if (available == requests) { noSlack= Math.min(noSlack, t); }
-			Integer avail= typeFrequency.get(t);
+			Integer avail= hotel.typeFreq().get(t);
 			Integer req= requestFrequency.get(t);
 			// Set the number of available rooms of type t+1 or greater
 			available-= avail == null ? 0 : avail;
@@ -137,82 +139,48 @@ public final class Instance {
 		return maxFeasibleTypeRequest() >= 0;
 	}
 
-	/** Return the quality of every room. A room's quality is considered to be the <br>
-	 * average satisfaction of a guest who can feasibly be assigned this room */
-	public HashMap<Room, Double> roomQualities() {
-
-		HashMap<Room, Double> quality= new HashMap<>();
-		for (Room room : rooms) {
-			int feasibleGuests= 0;
-			double totalQuality= 0;
-			for (Guest guest : guests) {
-				if (room.type() >= guest.type()) {
-					feasibleGuests++ ;
-					totalQuality+= weights.get(guest, room);
-				}
-			}
-			quality.put(room, feasibleGuests != 0 ? totalQuality / feasibleGuests : 0.0);
-		}
-		return quality;
-	}
-
 	/** Builder class used to create the immutable Instance */
 	public static class Builder {
 
-		/** the name of the instance (for CSV file access and naming purposes) */
-		private String name;
-		/** The list of hotel rooms (must have unique room numbers and fully accommodate guests) */
-		private ArrayList<Room> rooms= new ArrayList<>();
-		/** The map of unique room numbers to rooms */
-		private HashMap<Integer, Room> roomMap= new HashMap<>();
-		/** The number of rooms of a given type */
-		private HashMap<Integer, Integer> typeFrequency= new HashMap<>();
-		/** The set of used room numbers (to verify uniqueness) */
-		private HashSet<Integer> usedNums= new HashSet<>();
+		/** The hotel */
+		private Hotel hotel;
 		/** The list of hotel guests (must have unique guest IDs) */
 		private ArrayList<Guest> guests= new ArrayList<>();
+		/** The set of used guest ids */
+		private HashSet<Integer> usedIDs= new HashSet<>();
 		/** The map of unique guest IDs to guests */
 		private HashMap<Integer, Guest> guestMap= new HashMap<>();
 		/** The number of requests for a given room type */
 		private HashMap<Integer, Integer> requestFrequency= new HashMap<>();
-		/** The set of used guest IDs (to verify uniqueness) */
-		private HashSet<Integer> usedIDs= new HashSet<>();
 		/** The weight of every guest-room pair */
 		private MultiKeyMap<Object, Double> weights= new MultiKeyMap<>();
-		/** The size of the housekeeping team (must be greater than 0) */
-		private int teamSize;
 
-		/** Construct a Builder with given name and number of housekeepers
+		/** Construct a Builder for an instance on a given hotel
 		 *
-		 * @param name The name of the instance (at least one character)
-		 * @param h    The size of the housekeeping team (greater than 1) */
-		public Builder(String name, int h) {
-			if (name == null || name.length() < 1) throw new IllegalArgumentException("Name less than one character");
-			if (h < 1) throw new IllegalArgumentException("The housekeeping team has a size less than 1");
-			this.name= name;
-			teamSize= h;
+		 * @param hotel The hotel */
+		public Builder(Hotel hotel) {
+			if (hotel == null) throw new IllegalArgumentException("Hotel was null");
+			this.hotel= hotel;
 		}
 
 		/** Construct a Builder that is a copy of the given instance
 		 *
 		 * @param instance The instance that this Builder is a copy of */
-		public Builder(String name, Instance instance) {
-			if (name == null || name.length() < 1) throw new IllegalArgumentException("Name less than one character");
+		public Builder(Instance instance) {
 			if (instance == null) throw new IllegalArgumentException("Instance was null");
-			this.name= new String(name);
-			teamSize= instance.teamSize;
-			for (Room room : instance.rooms) {
-				addRoom(room);
+			hotel= instance.hotel;
+			guests= new ArrayList<>(instance.guests);
+			for (Guest guest : guests) {
+				usedIDs.add(guest.id());
 			}
-			for (Guest guest : instance.guests) {
-				addGuest(guest);
-			}
+			guestMap= new HashMap<>(instance.guestMap);
+			requestFrequency= new HashMap<>(instance.requestFrequency);
 			weights.putAll(instance.weights);
 		}
 
 		/** Return the list of guests */
 		public ArrayList<Guest> guests() {
-			return guests;
+			return new ArrayList<>(guests);
 		}
 
 		/** Return the guest with the given guest ID. Return null if no guest with this ID. */
@@ -220,14 +188,9 @@ public final class Instance {
 			return guestMap.get(id);
 		}
 
-		/** Return the list of rooms */
-		public ArrayList<Room> rooms() {
-			return rooms;
-		}
-
 		/** Return the room with the given room number. Return null if no room with this number. */
 		public Room room(int num) {
-			return roomMap.get(num);
+			return hotel.room(num);
 		}
 
 		/** Return the map of weights */
@@ -235,30 +198,10 @@ public final class Instance {
 			return weights;
 		}
 
-		/** Add the given room to the list
-		 *
-		 * @param room A room to be added (with unique room number) */
-		public Builder addRoom(Room room) {
-			if (room == null) throw new IllegalArgumentException("Room was null");
-			int num= room.num();
-			int type= room.type();
-			if (usedNums.contains(num)) throw new IllegalArgumentException("Non-unique room number");
-			rooms.add(room);
-			roomMap.put(num, room);
-			if (!typeFrequency.containsKey(type)) {
-				typeFrequency.put(type, 1);
-			} else {
-				int prev= typeFrequency.get(type);
-				typeFrequency.put(type, prev + 1);
-			}
-			usedNums.add(num);
-			return this;
-		}
-
-		/** Add the given guest to the list
+		/** Add the given guest to this set of arrivals
 		 *
 		 * @param guest A guest to be added (with unique guest ID) */
-		public Builder addGuest(Guest guest) {
+		public void addGuest(Guest guest) {
 			if (guest == null) throw new IllegalArgumentException("Guest was null");
 			int id= guest.id();
 			int type= guest.type();
@@ -272,7 +215,6 @@ public final class Instance {
 				requestFrequency.put(type, prev + 1);
 			}
 			usedIDs.add(id);
-			return this;
 		}
 
 		/** Add the given weight between the given guest and room
@@ -282,7 +224,7 @@ public final class Instance {
 		 * @param wgt   The weight to be added (represents satisfaction) in 0..1 */
 		public Builder addWeight(Guest guest, Room room, Double wgt) {
 			if (!guests.contains(guest)) throw new IllegalArgumentException("Guest not in instance");
-			if (!rooms.contains(room)) throw new IllegalArgumentException("Room not in instance");
+			if (!hotel.rooms().contains(room)) throw new IllegalArgumentException("Room not in instance");
 			if (wgt < 0 || wgt > 1) throw new IllegalArgumentException("Weight not in [0,1]");
 			weights.put(guest, room, wgt);
 			return this;
@@ -290,100 +232,62 @@ public final class Instance {
 
 		/** Construct an instance from this Builder instance */
 		public Instance build() {
-			return new Instance(name, rooms, roomMap, typeFrequency,
-				guests, guestMap, requestFrequency, weights, teamSize);
+			return new Instance(hotel, guests, guestMap, requestFrequency, weights);
 		}
 	}
 
 	/** Construct an instance with the respective list of rooms, guests, weights, and team size. <br>
 	 * Any guest-room pair not given a weight will be given a defualt weight of zero.
 	 *
-	 * @param rooms  The list of rooms in this instance (unique room numbers, > 1)
-	 * @param guests The list of guest in this instance (unique guest IDs, > 1)
-	 * @param weight The weights between guest-room pairs (in 0..1)
-	 * @param h      The size of the housekeeping team (greater than 0) */
-	private Instance(String name, ArrayList<Room> rooms, HashMap<Integer, Room> roomMap,
-		HashMap<Integer, Integer> typeFrequency, ArrayList<Guest> guests,
-		HashMap<Integer, Guest> guestMap, HashMap<Integer, Integer> requestFrequency,
-		MultiKeyMap<Object, Double> weights, int teamSize) {
-		this.name= new String(name);
-		if (rooms.size() < 1) throw new IllegalArgumentException("No rooms in instance");
-		this.rooms= new ArrayList<>(rooms);
-		this.roomMap= new HashMap<>(roomMap);
-		this.typeFrequency= new HashMap<>(typeFrequency);
+	 * @param id       The unique id for this instance
+	 * @param hotel    The hotel
+	 * @param arrivals The set of arrivals (at least one guest)
+	 * @param weight   The weights between guest-room pairs (in 0..1) */
+	private Instance(Hotel hotel, ArrayList<Guest> guests, HashMap<Integer, Guest> guestMap,
+		HashMap<Integer, Integer> requestFrequency, MultiKeyMap<Object, Double> weights) {
+		this.hotel= hotel;
 		if (guests.size() < 1) throw new IllegalArgumentException("No guests in instance");
 		this.guests= new ArrayList<>(guests);
 		this.guestMap= new HashMap<>(guestMap);
 		this.requestFrequency= new HashMap<>(requestFrequency);
 		this.weights= new MultiKeyMap<>();
-		for (Guest guest : guests) {
-			for (Room room : rooms) {
+		for (Guest guest : this.guests) {
+			for (Room room : hotel.rooms()) {
 				Double wgt= weights.get(guest, room);
 				this.weights.put(guest, room, wgt == null ? 0.0 : wgt);
 			}
 		}
-		this.teamSize= teamSize;
 	}
 
-	/** Create a directory under the same name as the instance containing three <br>
-	 * CSV files describing this instance in the given directory
+	/** In the given directory, check to see if a directory under the name of the <br>
+	 * unique hotel id exists. If it does, it is assumed to contain a hotel.csv <br>
+	 * file. If not, create this directory and write the hotel.csv file. Then, <br>
+	 * create a directory under the name of the unique instance id and write <br>
+	 * the arrivals.csv and weights.csv files in it.
 	 *
-	 * @param dir The directory where the CSV file directory will be placed */
+	 * @param dir The directory where the instance directory will be placed */
 	public void writeCSV(Path dir) {
 
-		dir= Paths.get(dir.toString(), name);
-		new File(dir.toString()).mkdirs();
-		writeGuestsCSV(dir);
-		writeRoomsCSV(dir);
-		writeWeightsCSV(dir);
+		File hotelDir= Paths.get(dir.toString(), String.valueOf(hotel.id())).toFile();
+		if (!hotelDir.exists()) {
+			hotel.writeCSV(dir);
+		}
+		File instanceDir= Paths.get(hotelDir.toString(), String.valueOf(id())).toFile();
+		instanceDir.mkdirs();
+		writeArrivalsCSV(instanceDir.toPath());
+		writeWeightsCSV(instanceDir.toPath());
 	}
 
-	/** Create a directory under the same name as the instance containing three <br>
-	 * CSV files describing this instance in the "Simulations" directory
-	 *
-	 * @param dir The directory where the CSV file directory will be placed */
+	/** Create the corresponding CSV files in the proper structure in the Simulations directory */
 	public void writeCSV() {
-		writeCSV(Paths.get("AMPL", "Simulations"));
-	}
-
-	/** Write the guests.csv file and place it in the given directory
-	 *
-	 * @param dir The directory where the guests.csv file will be placed */
-	private void writeGuestsCSV(Path dir) {
-		try {
-			File file= new File(Paths.get(dir.toString(), "guests.csv").toString());
-			FileWriter fw= new FileWriter(file);
-			fw.write("Guest ID, Requested Room Type, Arrival Time \n");
-			for (Guest guest : guests) {
-				fw.write(guest.id() + "," + guest.type() + "," + guest.arrival() + "\n");
-			}
-			fw.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-
-	/** Write the rooms.csv file and place it in the given directory
-	 *
-	 * @param dir The directory where the rooms.csv file will be placed */
-	private void writeRoomsCSV(Path dir) {
-		try {
-			File file= new File(Paths.get(dir.toString(), "rooms.csv").toString());
-			FileWriter fw= new FileWriter(file);
-			fw.write("Room Number,Type,Checkout Time,Cleaning Time\n");
-			for (Room room : rooms) {
-				fw.write(room.num() + "," + room.type() + "," + room.release() + "," + room.process() + "\n");
-			}
-			fw.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+		writeCSV(Paths.get("Simulations"));
 	}
 
 	/** Write the weights.csv file and place it in the given directory
 	 *
 	 * @param dir The directory where the weights.csv file will be placed */
 	private void writeWeightsCSV(Path dir) {
+		ArrayList<Room> rooms= hotel.rooms();
 		try {
 			File file= new File(Paths.get(dir.toString(), "weights.csv").toString());
 			FileWriter fw= new FileWriter(file);
@@ -402,20 +306,35 @@ public final class Instance {
 		}
 	}
 
+	/** Write the arrivals.csv file and place it in the given directory
+	 *
+	 * @param dir The directory where the guests.csv file will be placed */
+	private void writeArrivalsCSV(Path dir) {
+		try {
+			File file= new File(Paths.get(dir.toString(), "arrivals.csv").toString());
+			FileWriter fw= new FileWriter(file);
+			fw.write("Guest ID, Requested Room Type, Arrival Time \n");
+			for (Guest guest : guests) {
+				fw.write(guest.id() + "," + guest.type() + "," + guest.arrival() + "\n");
+			}
+			fw.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
 	@Override
 	public boolean equals(Object ob) {
 		if (ob == null) return false;
 		if (ob.getClass() != Instance.class) return false;
 		Instance instance= (Instance) ob;
-		if (teamSize != instance.teamSize) return false;
+//		if (id != instance.id) return false;
+		if (!hotel.equals(instance.hotel)) return false;
 		Collections.sort(guests, Comparator.comparingInt(Guest::id));
-		Collections.sort(rooms, Comparator.comparingInt(Room::num));
 		Collections.sort(instance.guests, Comparator.comparingInt(Guest::id));
-		Collections.sort(instance.rooms, Comparator.comparingInt(Room::num));
-		if (!rooms.equals(instance.rooms)) return false;
 		if (!guests.equals(instance.guests)) return false;
 		for (Guest guest : guests) {
-			for (Room room : rooms) {
+			for (Room room : hotel.rooms()) {
 				int g= guest.id();
 				int r= room.num();
 				if (!weight(g, r).equals(instance.weight(g, r))) { return false; }
@@ -428,21 +347,14 @@ public final class Instance {
 	@Override
 	public String toString() {
 
+		ArrayList<Room> rooms= hotel.rooms();
+
 		Collections.sort(rooms, Comparator.comparingInt(Room::num));
 		Collections.sort(guests, Comparator.comparingInt(Guest::id));
 
 		StringBuilder sb= new StringBuilder();
-		sb.append("ROOMS\n");
-		sb.append("------------------------------------------\n");
-		sb.append("ROOM\t" + "TYPE\t" + "CHECKOUT\t" + "CLEAN TIME\n");
-		for (Room room : rooms) {
-			sb.append(String.format("%-4d \t", room.num()));
-			sb.append(String.format("%-4d \t", room.type()));
-			sb.append(String.format("%-7d \t", room.release()));
-			sb.append(String.format("%-9d \n", room.process()));
-		}
-		sb.append("------------------------------------------\n\n");
-		sb.append("GUESTS\n");
+		sb.append(hotel);
+		sb.append("ARRIVALS\n");
 		sb.append("-----------------------\n");
 		sb.append("GUEST\t" + "TYPE\t" + "ARRIVAL\n");
 		for (Guest guest : guests) {
@@ -474,8 +386,6 @@ public final class Instance {
 			sb.append("-----");
 		}
 		sb.append("---\n");
-
-		sb.append("Housekeeping Team Size: " + teamSize + "\n");
 		return sb.toString();
 	}
 }

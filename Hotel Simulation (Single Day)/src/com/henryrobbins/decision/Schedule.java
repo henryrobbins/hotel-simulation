@@ -38,7 +38,7 @@ public class Schedule implements Decision {
 		if (inst == null) throw new IllegalArgumentException("Instance is null");
 		instance= inst;
 		housekeepers= new ArrayList<>();
-		for (int i= 1; i <= instance.teamSize(); i++ ) {
+		for (int i= 1; i <= instance.getH(); i++ ) {
 			housekeepers.add(new Housekeeper(i));
 		}
 		startTimes= new HashMap<>();
@@ -195,7 +195,7 @@ public class Schedule implements Decision {
 	/** Reset the housekeeping schedule leaving it empty */
 	public void reset() {
 		housekeepers= new ArrayList<>();
-		int h= instance.teamSize();
+		int h= instance.getH();
 		for (int i= 1; i <= h; i++ ) {
 			housekeepers.add(new Housekeeper(i));
 		}

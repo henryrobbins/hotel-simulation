@@ -52,7 +52,7 @@ public class SimRunTimes<T extends Decision> extends Simulation {
 		for (Solver<T> solver : solvers) {
 			for (int t= 0; t < trial; t++ ) {
 				for (int n= 0; n < sizes.length; n++ ) {
-					Instance instance= InstanceFactory.createRandom(name + "_n" + sizes[n] + "_t" + t, sizes[n]);
+					Instance instance= InstanceFactory.randInstance(sizes[n]);
 					StopWatch watch= new StopWatch();
 					watch.start();
 					solver.solve(instance);

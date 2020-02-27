@@ -3,7 +3,6 @@ package com.henryrobbins.solver.assignment;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 
 import com.henryrobbins.decision.Assignment;
 import com.henryrobbins.hotel.Guest;
@@ -23,12 +22,11 @@ public class WorstFirst implements Solver<Assignment> {
 		Assignment assignment= new Assignment(instance);
 		ArrayList<Room> rooms= instance.rooms();
 		ArrayList<Guest> guests= instance.guests();
-		HashMap<Room, Double> quality= instance.roomQualities();
 
 		Collections.sort(guests);
 		Collections.sort(guests, Comparator.comparingInt(Guest::arrival));
 		Collections.sort(rooms);
-		Collections.sort(rooms, (a, b) -> Double.compare(quality.get(a), quality.get(b)));
+		Collections.sort(rooms, (a, b) -> Double.compare(a.quality(), b.quality()));
 
 		for (Guest guest : guests) {
 			int min= assignment.getMinType(guest);

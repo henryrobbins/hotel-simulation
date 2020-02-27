@@ -11,25 +11,31 @@ public final class Room implements Comparable<Room> {
 	private final int number;
 	/** This room's type (at least 1) */
 	private final int type;
+	/** The intrinsic quality of this room (in [0,1]) */
+	private final double quality;
 	/** The time when the room is released to be cleaned (at least 0) <br>
 	 * [In other words, the time interval in which the previous guest leaves] */
 	private final int release;
 	/** The time it takes housekeeping to process (clean) this room (at least 1) */
 	private final int process;
 
-	/** Construct a room with specified number, type, release time, and processing time
+	/** Construct a room with specified number, type, quality, and release and processing time
 	 *
 	 * @param number  This room's room number (at least 1)
 	 * @param type    This room's type (at least 1)
+	 * @param quality This room's intrinsic quality (in [0,1])
 	 * @param release The time when the room is released to be cleaned (at least 0)
 	 * @param process The time it takes housekeeping to process this room (at least 1) */
-	public Room(int number, int type, int release, int process) {
+	public Room(int number, int type, double quality, int release, int process) {
 		if (number < 1) throw new IllegalArgumentException("Room number less than 1");
 		if (type < 1) throw new IllegalArgumentException("Room type less than 1");
+		if (quality < 0) throw new IllegalArgumentException("Quality not in [0,1]");
+		if (quality > 1) throw new IllegalArgumentException("Quality not in [0,1]");
 		if (release < 0) throw new IllegalArgumentException("Release time was negative");
 		if (process < 1) throw new IllegalArgumentException("Processing time less than 1");
 		this.number= number;
 		this.type= type;
+		this.quality= quality;
 		this.release= release;
 		this.process= process;
 	}
@@ -42,6 +48,11 @@ public final class Room implements Comparable<Room> {
 	/** Return this room's type */
 	public int type() {
 		return type;
+	}
+
+	/** Return this room's quality */
+	public double quality() {
+		return quality;
 	}
 
 	/** Return this room's release time */
@@ -62,6 +73,7 @@ public final class Room implements Comparable<Room> {
 		Room room= (Room) ob;
 		if (number != room.number) return false;
 		if (type != room.type) return false;
+		if (quality != room.quality) return false;
 		if (release != room.release) return false;
 		if (process != room.process) return false;
 		return true;
