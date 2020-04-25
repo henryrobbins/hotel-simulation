@@ -1,5 +1,6 @@
 package com.henryrobbins;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.util.Properties;
@@ -8,61 +9,72 @@ import org.apache.commons.math3.distribution.BetaDistribution;
 import org.apache.commons.math3.distribution.EnumeratedIntegerDistribution;
 import org.apache.commons.math3.distribution.NormalDistribution;
 
-public class RandProperties {
+/** maintains the random parameters for random instance creation */
+public abstract class RandProperties {
 
 	/** The number of minutes each time interval represents */
-	public final static double TIME_INTERVAL;
+	public static double TIME_INTERVAL;
 
 	/** The ratio of guests to rooms */
-	public final static double avgCapacity;
+	public static double avgCapacity;
 	/** The ratio of housekeepers to rooms */
-	public final static double housekeepingRatio;
+	public static double housekeepingRatio;
 
 	/** The set of room types */
-	public final static int roomTypes;
+	public static int roomTypes;
 	/** The distribution of room types */
-	public final static EnumeratedIntegerDistribution roomDistribution;
+	public static EnumeratedIntegerDistribution roomDistribution;
 	/** The distribution of room type requests */
-	public final static EnumeratedIntegerDistribution requestDistribution;
+	public static EnumeratedIntegerDistribution requestDistribution;
 
 	/** The distribution of room intrinsic qualities */
-	public final static NormalDistribution qualitiesDistribution;
+	public static NormalDistribution qualitiesDistribution;
 	/** The distribution of guest pickiness */
-	public final static BetaDistribution ubSatDistribution;
+	public static BetaDistribution ubSatDistribution;
 	/** The distribution of guest pickiness */
-	public final static BetaDistribution lbSatDistribution;
+	public static BetaDistribution lbSatDistribution;
 	/** The standard deviation for distribution of guest satisfaction (no upgrade) */
-	public final static double randSat;
+	public static double randSat;
 	/** The increase to mean for distribution of guest satisfaction for every upgrade */
-	public final static double upgradeBonus;
+	public static double upgradeBonus;
 
 	/** The distribution of cleaning times based on room type */
-	public final static NormalDistribution[] cleanTime;
+	public static NormalDistribution[] cleanTime;
 	/** The lower bound of cleaning time based on room type */
-	public final static int[] cleanTimeLB;
+	public static int[] cleanTimeLB;
 	/** The upper bound of cleaning time based on room type */
-	public final static int[] cleanTimeUB;
+	public static int[] cleanTimeUB;
 
 	/** The distribution of check-out times */
-	public final static NormalDistribution checkout;
+	public static NormalDistribution checkout;
 	/** The lower bound check-out time */
-	public final static int checkoutLB;
+	public static int checkoutLB;
 	/** The upper bound check-out time */
-	public final static int checkoutUB;
+	public static int checkoutUB;
 
 	/** The distribution of check-in times */
-	public final static NormalDistribution checkin;
+	public static NormalDistribution checkin;
 	/** The lower bound check-in time */
-	public final static int checkinLB;
+	public static int checkinLB;
 	/** The upper bound check-in time */
-	public final static int checkinUB;
+	public static int checkinUB;
 
+	/** set the initial parameters to the default */
 	static {
-		// TODO: Not high production quality...
+		set("default");
+	}
+
+	/** set the initial parameters to the .properties file called name */
+	public static void set(String name) {
+		set(ResourcesPath.path().resolve("params").resolve(name + ".properties").toFile());
+	}
+
+	/** set the initial parameters to the .properties file */
+	public static void set(File file) {
 
 		Properties randParam= new Properties();
 		try {
-			InputStream is= new FileInputStream("randParam.properties");
+			InputStream is= new FileInputStream(file);
 			randParam.load(is);
 			is.close();
 		} catch (Exception e) {
@@ -123,6 +135,7 @@ public class RandProperties {
 		checkin= new NormalDistribution(checkinMean / TIME_INTERVAL, checkinStd / TIME_INTERVAL);
 		checkinLB= (int) (Integer.parseInt((String) randParam.get("checkinLb")) / TIME_INTERVAL);
 		checkinUB= (int) (Integer.parseInt((String) randParam.get("checkinUb")) / TIME_INTERVAL);
+
 	}
 
 	/** Convert the string representation of an int array back to int[] */

@@ -12,9 +12,7 @@ import com.henryrobbins.hotel.Guest;
 import com.henryrobbins.hotel.Instance;
 import com.henryrobbins.hotel.Room;
 
-/** Maintains a feasible assignment of guests to hotel rooms for a given instance. <br>
- * The structure is analogous to a matching on a given bipartite graph. <br>
- * Furthermore, it maintains statistics for the assignment */
+/** Maintains an assignment of guests to hotel rooms for a given instance. */
 public class Assignment implements Decision {
 
 	/** The instance that this room assignment (matching) is for */
@@ -22,6 +20,8 @@ public class Assignment implements Decision {
 	/** The matching (assignment) of guests to rooms */
 	private BidiMap<Guest, Room> matching= new DualHashBidiMap<>();
 	/** The set of satisfactions for every guest */
+
+	// MAINTAINS STATISTICS
 	private DescriptiveStatistics satisfaction= new DescriptiveStatistics();
 	/** The set of upgrades for every guest */
 	private DescriptiveStatistics upgrades= new DescriptiveStatistics();
@@ -37,19 +37,27 @@ public class Assignment implements Decision {
 		}
 	}
 
+	/** Construct a copy of the given Assignment */
+	public Assignment(Assignment assignment) {
+		instance= new Instance.Builder(assignment.instance).build();
+		matching= new DualHashBidiMap<>(assignment.matching);
+		satisfaction= new DescriptiveStatistics(assignment.satisfaction);
+		upgrades= new DescriptiveStatistics(assignment.upgrades);
+	}
+
 	/** Return the current room assignment (matching) */
 	public BidiMap<Guest, Room> assignment() {
-		return matching;
+		return new DualHashBidiMap<>(matching);
 	}
 
 	/** Return the satisfaction statistics for the current room assignment (matching) */
 	public DescriptiveStatistics satisfactionStats() {
-		return satisfaction;
+		return new DescriptiveStatistics(satisfaction);
 	}
 
 	/** Return the upgrades statistics for the current room assignment(matching) */
 	public DescriptiveStatistics upgradeStats() {
-		return upgrades;
+		return new DescriptiveStatistics(upgrades);
 	}
 
 	/** Return true if this room assignment is for the given instance; false otherwise */
@@ -57,21 +65,21 @@ public class Assignment implements Decision {
 		return this.instance.equals(instance);
 	}
 
-	/** Assigns the specified guest to the specified room
+	/** Assigns the given guest to the given room. Returns true if assigned successfully.
 	 *
-	 * @param guest The guest to be assigned (In this instance and unassigned)
-	 * @param room  The room the guest is assigned (In this instance, satisfies <br>
-	 *              the guest's requested type, and yet to be assigned a guest) */
-	public void assign(Guest guest, Room room) {
+	 * @param guest The guest to be assigned (in this instance)
+	 * @param room  The room the guest is assigned (in this instance) */
+	public boolean assign(Guest guest, Room room) {
 		if (!instance.guests().contains(guest)) throw new IllegalArgumentException("Guest not in instance");
 		if (!instance.rooms().contains(room)) throw new IllegalArgumentException("Room not in instance");
 		int upgrade= room.type() - guest.type();
-		if (upgrade < 0) throw new IllegalArgumentException("Room type does not satisfy guest request");
-		if (!isRoomOpen(room)) throw new IllegalArgumentException("Room already assigned");
-		if (isGuestAssigned(guest)) throw new IllegalArgumentException("Guest already assigned");
+		if (upgrade < 0) return false;
+		if (!isRoomOpen(room)) return false;
+		if (isGuestAssigned(guest)) return false;
 		matching.put(guest, room);
 		satisfaction.addValue(instance.weight(guest, room));
 		upgrades.addValue(upgrade);
+		return true;
 	}
 
 	/** Return true iff the given room is open and yet to be assigned */
@@ -87,7 +95,7 @@ public class Assignment implements Decision {
 	/** Return the minimum room type the given guest can be assigned <br>
 	 * (Given the current state of the assignment)
 	 *
-	 * @param guest The guest under question (a guest in this instance) */
+	 * @param guest The guest in question (a guest in this instance) */
 	public int getMinType(Guest guest) {
 		if (!instance.guests().contains(guest)) throw new IllegalArgumentException("Guest not in instance");
 		ArrayList<Room> rooms= instance.rooms();
@@ -119,7 +127,16 @@ public class Assignment implements Decision {
 		return sb.toString();
 	}
 
-	/** Return a string representing the room assignment */
+	@Override
+	public boolean equals(Object ob) {
+		if (ob == null) return false;
+		if (ob.getClass() != Assignment.class) return false;
+		Assignment assignment= (Assignment) ob;
+		if (!instance.equals(assignment.instance)) return false;
+		if (!matching.equals(assignment.matching)) return false;
+		return true;
+	}
+
 	@Override
 	public String toString() {
 		ArrayList<Room> rooms= instance.rooms();

@@ -2,7 +2,6 @@ package com.henryrobbins.hotel;
 
 import java.io.File;
 import java.io.FileWriter;
-import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -13,35 +12,26 @@ import java.util.HashSet;
 
 import org.apache.commons.collections4.map.MultiKeyMap;
 
-/** Maintains a hotel and a single day of hotel guest arrivals. Furthermore, stores the <br>
- * satisfaction of every guest-room pair. An instance is analogous to a bipartite graph in <br>
- * which the left nodes are guests, the right nodes are rooms, and the edges between them <br>
- * have weights corresponding to the satisfaction of that assignment. Additionally, an <br>
- * instance stores the size of the housekeeping team. */
+/** Maintains an immutable set of incoming hotel guests on some day for the specified hotel */
 public final class Instance {
 
-	/** The hotel */
+	/** Hotel */
 	private final Hotel hotel;
-	/** The list of hotel guests (must have unique guest IDs) */
+	/** List of hotel guests (with unique guest IDs) */
 	private final ArrayList<Guest> guests;
-	/** The map of unique guest IDs to guests */
+	/** Map of unique guest IDs to guests */
 	private final HashMap<Integer, Guest> guestMap;
-	/** The number of requests for a given room type */
+	/** Map from room types to the number of requests */
 	private final HashMap<Integer, Integer> requestFrequency;
-	/** The weight of every guest-room pair */
+	/** Map of weights for every guest-room pair */
 	private final MultiKeyMap<Object, Double> weights;
-
-	/** Return the unique id of this instance */
-	public int id() {
-		return System.identityHashCode(this);
-	}
 
 	/** Return the hotel in this instance */
 	public Hotel hotel() {
 		return hotel;
 	}
 
-	/** Return the list of guests */
+	/** Return a copy of the incoming guests list */
 	public ArrayList<Guest> guests() {
 		return new ArrayList<>(guests);
 	}
@@ -51,12 +41,7 @@ public final class Instance {
 		return guestMap.get(id);
 	}
 
-	/** Return the room type request frequencies */
-	public HashMap<Integer, Integer> reqeustFreq() {
-		return requestFrequency;
-	}
-
-	/** Return the list of rooms */
+	/** Return a copy of the list of rooms */
 	public ArrayList<Room> rooms() {
 		return new ArrayList<>(hotel.rooms());
 	}
@@ -66,18 +51,19 @@ public final class Instance {
 		return hotel.room(num);
 	}
 
-	/** Return the weight of the given guest-room pair
-	 *
-	 * @param g   The unique ID of the guest
-	 * @param r   The unique room number of the room
-	 * @param wgt The weight of the edge between guest g and room r */
-	public Double weight(int g, int r) {
-		return weight(guest(g), room(r));
+	/** Return the room type request frequency map */
+	public HashMap<Integer, Integer> reqeustFreq() {
+		return new HashMap<>(requestFrequency);
 	}
 
 	/** Return the weight of the given guest-room pair */
 	public Double weight(Guest guest, Room room) {
 		return weights.get(guest, room);
+	}
+
+	/** Return the weight of the given guest-room pair */
+	public Double weight(int g, int r) {
+		return weight(guest(g), room(r));
 	}
 
 	/** Return the map of weights */
@@ -130,7 +116,6 @@ public final class Instance {
 			requests-= req == null ? 0 : req;
 		}
 		return noSlack - 1;
-
 	}
 
 	/** Return true if the list of rooms can accommodate all guests (where "accommodate" entails <br>
@@ -142,30 +127,26 @@ public final class Instance {
 	/** Builder class used to create the immutable Instance */
 	public static class Builder {
 
-		/** The hotel */
+		/** Hotel */
 		private Hotel hotel;
-		/** The list of hotel guests (must have unique guest IDs) */
+		/** List of hotel guests (with unique guest IDs) */
 		private ArrayList<Guest> guests= new ArrayList<>();
 		/** The set of used guest ids */
 		private HashSet<Integer> usedIDs= new HashSet<>();
-		/** The map of unique guest IDs to guests */
+		/** Map of unique guest IDs to guests */
 		private HashMap<Integer, Guest> guestMap= new HashMap<>();
-		/** The number of requests for a given room type */
+		/** Map from room types to the number of requests */
 		private HashMap<Integer, Integer> requestFrequency= new HashMap<>();
-		/** The weight of every guest-room pair */
+		/** Map of weights for every guest-room pair */
 		private MultiKeyMap<Object, Double> weights= new MultiKeyMap<>();
 
-		/** Construct a Builder for an instance on a given hotel
-		 *
-		 * @param hotel The hotel */
+		/** Construct a Builder for an Instance on a given hotel */
 		public Builder(Hotel hotel) {
 			if (hotel == null) throw new IllegalArgumentException("Hotel was null");
 			this.hotel= hotel;
 		}
 
-		/** Construct a Builder that is a copy of the given instance
-		 *
-		 * @param instance The instance that this Builder is a copy of */
+		/** Construct a Builder that is a copy of the given instance */
 		public Builder(Instance instance) {
 			if (instance == null) throw new IllegalArgumentException("Instance was null");
 			hotel= instance.hotel;
@@ -176,6 +157,11 @@ public final class Instance {
 			guestMap= new HashMap<>(instance.guestMap);
 			requestFrequency= new HashMap<>(instance.requestFrequency);
 			weights.putAll(instance.weights);
+		}
+
+		/** Return the hotel this is a builder for */
+		public Hotel hotel() {
+			return hotel;
 		}
 
 		/** Return the list of guests */
@@ -208,10 +194,10 @@ public final class Instance {
 			if (usedIDs.contains(id)) throw new IllegalArgumentException("Non-unique guest ID");
 			guests.add(guest);
 			guestMap.put(id, guest);
-			if (!requestFrequency.containsKey(type)) {
+			Integer prev= requestFrequency.get(type);
+			if (prev == null) {
 				requestFrequency.put(type, 1);
 			} else {
-				int prev= requestFrequency.get(type);
 				requestFrequency.put(type, prev + 1);
 			}
 			usedIDs.add(id);
@@ -230,19 +216,20 @@ public final class Instance {
 			return this;
 		}
 
-		/** Construct an instance from this Builder instance */
+		/** Construct an Instance from this Builder */
 		public Instance build() {
 			return new Instance(hotel, guests, guestMap, requestFrequency, weights);
 		}
 	}
 
 	/** Construct an instance with the respective list of rooms, guests, weights, and team size. <br>
-	 * Any guest-room pair not given a weight will be given a defualt weight of zero.
+	 * Any guest-room pair not given a weight will be given a default weight of zero.
 	 *
-	 * @param id       The unique id for this instance
-	 * @param hotel    The hotel
-	 * @param arrivals The set of arrivals (at least one guest)
-	 * @param weight   The weights between guest-room pairs (in 0..1) */
+	 * @param hotel            The hotel
+	 * @param guests           The set of arrivals (at least one guest)
+	 * @param guestMap         Map of unique guest ids to Guests
+	 * @param requestFrequency Map of room types to request frequency
+	 * @param weights          The weights between guest-room pairs (in 0..1) */
 	private Instance(Hotel hotel, ArrayList<Guest> guests, HashMap<Integer, Guest> guestMap,
 		HashMap<Integer, Integer> requestFrequency, MultiKeyMap<Object, Double> weights) {
 		this.hotel= hotel;
@@ -259,68 +246,52 @@ public final class Instance {
 		}
 	}
 
-	/** In the given directory, check to see if a directory under the name of the <br>
-	 * unique hotel id exists. If it does, it is assumed to contain a hotel.csv <br>
-	 * file. If not, create this directory and write the hotel.csv file. Then, <br>
-	 * create a directory under the name of the unique instance id and write <br>
-	 * the arrivals.csv and weights.csv files in it.
+	/** Create a directory called name in the specified directory and write arrivals.csv and weights.csv
+	 * to it representing this instance's arrivals and weights respectively
 	 *
-	 * @param dir The directory where the instance directory will be placed */
-	public void writeCSV(Path dir) {
+	 * @throws Exception */
+	public void writeCSV(Path dir, String name) throws Exception {
+		File instDir= Paths.get(dir.toString(), name).toFile();
+		instDir.mkdirs();
+		writeArrivalsCSV(instDir.toPath(), "arrivals");
+		writeWeightsCSV(instDir.toPath(), "weights");
 
-		File hotelDir= Paths.get(dir.toString(), String.valueOf(hotel.id())).toFile();
-		if (!hotelDir.exists()) {
-			hotel.writeCSV(dir);
-		}
-		File instanceDir= Paths.get(hotelDir.toString(), String.valueOf(id())).toFile();
-		instanceDir.mkdirs();
-		writeArrivalsCSV(instanceDir.toPath());
-		writeWeightsCSV(instanceDir.toPath());
 	}
 
-	/** Create the corresponding CSV files in the proper structure in the Simulations directory */
-	public void writeCSV() {
-		writeCSV(Paths.get("Simulations"));
-	}
-
-	/** Write the weights.csv file and place it in the given directory
+	/** Write a CSV file representing the weights called name to the specified directory
 	 *
-	 * @param dir The directory where the weights.csv file will be placed */
-	private void writeWeightsCSV(Path dir) {
+	 * @param dir  directory where the CSV file will be written
+	 * @param name name of the csv file
+	 * @throws Exception */
+	private void writeWeightsCSV(Path dir, String name) throws Exception {
 		ArrayList<Room> rooms= hotel.rooms();
-		try {
-			File file= new File(Paths.get(dir.toString(), "weights.csv").toString());
-			FileWriter fw= new FileWriter(file);
-			for (Room room : rooms) {
-				fw.write("," + room.num());
-			}
-			for (Guest guest : guests) {
-				fw.write("\n" + guest.id() + "");
-				for (Room room : rooms) {
-					fw.write("," + weights.get(guest, room));
-				}
-			}
-			fw.close();
-		} catch (IOException e) {
-			e.printStackTrace();
+		File file= new File(Paths.get(dir.toString(), name + ".csv").toString());
+		FileWriter fw= new FileWriter(file);
+		for (Room room : rooms) {
+			fw.write("," + room.num());
 		}
+		for (Guest guest : guests) {
+			fw.write("\n" + guest.id() + "");
+			for (Room room : rooms) {
+				fw.write("," + weights.get(guest, room));
+			}
+		}
+		fw.close();
 	}
 
-	/** Write the arrivals.csv file and place it in the given directory
+	/** Write a CSV file representing the arrivals called name to the specified directory
 	 *
-	 * @param dir The directory where the guests.csv file will be placed */
-	private void writeArrivalsCSV(Path dir) {
-		try {
-			File file= new File(Paths.get(dir.toString(), "arrivals.csv").toString());
-			FileWriter fw= new FileWriter(file);
-			fw.write("Guest ID, Requested Room Type, Arrival Time \n");
-			for (Guest guest : guests) {
-				fw.write(guest.id() + "," + guest.type() + "," + guest.arrival() + "\n");
-			}
-			fw.close();
-		} catch (IOException e) {
-			e.printStackTrace();
+	 * @param dir  directory where the CSV file will be written
+	 * @param name name of the csv file
+	 * @throws Exception */
+	private void writeArrivalsCSV(Path dir, String name) throws Exception {
+		File file= new File(Paths.get(dir.toString(), name + ".csv").toString());
+		FileWriter fw= new FileWriter(file);
+		fw.write("Guest ID, Requested Room Type, Arrival Time \n");
+		for (Guest guest : guests) {
+			fw.write(guest.id() + "," + guest.type() + "," + guest.arrival() + "\n");
 		}
+		fw.close();
 	}
 
 	@Override
@@ -328,7 +299,6 @@ public final class Instance {
 		if (ob == null) return false;
 		if (ob.getClass() != Instance.class) return false;
 		Instance instance= (Instance) ob;
-//		if (id != instance.id) return false;
 		if (!hotel.equals(instance.hotel)) return false;
 		Collections.sort(guests, Comparator.comparingInt(Guest::id));
 		Collections.sort(instance.guests, Comparator.comparingInt(Guest::id));
@@ -343,7 +313,6 @@ public final class Instance {
 		return true;
 	}
 
-	/** Return a string representing this instance */
 	@Override
 	public String toString() {
 

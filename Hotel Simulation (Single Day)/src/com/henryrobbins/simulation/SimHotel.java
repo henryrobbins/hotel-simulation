@@ -9,49 +9,51 @@ import javax.swing.JProgressBar;
 
 import com.henryrobbins.decision.Decision;
 import com.henryrobbins.decision.Statistic;
+import com.henryrobbins.hotel.Hotel;
 import com.henryrobbins.hotel.Instance;
+import com.henryrobbins.hotel.InstanceFactory;
 import com.henryrobbins.solver.Solver;
 
-/** Runs the given set of a certain type of solver on a set of randomly generated instances <br>
- * and maintains the given set of statistics. Statistics are averaged over t trials on all given
- * hotel sizes. Creates a CSV file at the given directory in this form:
- *
- * <pre>
- *          |  Statistic 1  |  Statistic 2  |  Statistic 3
- * --------------------------------------------------------
- * Solver1  |       -       |       -       |       -
- * Solver2  |       -       |       -       |       -
- *
- * </pre>
- */
-public class SimInstanceSolvers<T extends Decision> extends Simulation {
+/** Generate random instances on a hotel for a given number of random days */
+public class SimHotel<T extends Decision> extends Simulation {
 
-	/** The instance to be solved */
-	private Instance instance;
+	/** The number of trials */
+	private int trials;
+	/** The hotel */
+	private Hotel hotel;
 	/** The set of solvers */
 	private ArrayList<Solver<T>> solvers;
 	/** The set of statistics */
 	private ArrayList<Statistic<T>> stats;
 
-	public SimInstanceSolvers(ArrayList<Solver<T>> solvers, ArrayList<Statistic<T>> stats, Instance instance,
-		File dir, String name, JProgressBar progress) {
+	public SimHotel(int t, Hotel hotel, ArrayList<Solver<T>> solvers, ArrayList<Statistic<T>> stats, File dir,
+		String name, JProgressBar progress) {
 		super(dir, name, progress);
-		this.instance= instance;
+		trials= t;
+		this.hotel= hotel;
 		this.solvers= solvers;
 		this.stats= stats;
-		simTotal= this.solvers.size();
+		simTotal= solvers.size() * t;
 	}
 
 	@Override
 	public void run() {
 		double[][] result= new double[solvers.size()][stats.size()];
 
-		for (Solver<T> solver : solvers) {
-			T outcome= solver.solve(instance);
-			for (Statistic<T> stat : stats) {
-				result[solvers.indexOf(solver)][stats.indexOf(stat)]+= stat.getStat(outcome);
+		for (int t= 0; t < trials; t++ ) {
+			Instance instance= InstanceFactory.randInstance(hotel);
+			for (Solver<T> solver : solvers) {
+				T outcome= solver.solve(instance);
+				for (Statistic<T> stat : stats) {
+					result[solvers.indexOf(solver)][stats.indexOf(stat)]+= stat.getStat(outcome);
+				}
+				System.out.println(incrementSim());
 			}
-			System.out.println(incrementSim());
+		}
+		for (Solver<T> solver : solvers) {
+			for (Statistic<T> stat : stats) {
+				result[solvers.indexOf(solver)][stats.indexOf(stat)]/= trials;
+			}
 		}
 
 		File file= new File(dir.toString() + "/" + name + ".csv");

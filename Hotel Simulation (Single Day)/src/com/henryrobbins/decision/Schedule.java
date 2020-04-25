@@ -11,25 +11,23 @@ import com.henryrobbins.hotel.Housekeeper;
 import com.henryrobbins.hotel.Instance;
 import com.henryrobbins.hotel.Room;
 
-/** Maintains a feasible housekeeping schedule for a given instance. <br>
- * Furthermore, it maintains statistics for the schedule */
+/** Maintains a housekeeping schedule for a given instance. */
 public class Schedule implements Decision {
 
 	/** The instance that the housekeeping schedule is for */
 	private Instance instance;
-	/** The set of housekeepers whose size is consistent with the size in the instance */
+	/** Set of housekeepers whose size is consistent with the size in the instance */
 	private ArrayList<Housekeeper> housekeepers;
-	/** The time every assigned room begins getting cleaned. null if unassigned */
+	/** Map from rooms to the time they begin getting cleaned */
 	private HashMap<Room, Integer> startTimes;
-	/** The housekeeper assigned to each room. null if unassigned */
+	/** Map from rooms to the housekeeper that is assigned to clean them */
 	private HashMap<Room, Housekeeper> assign;
 
-	/** The set of finishing times for every assigned room */
+	// MAINTAINS STATISTICS
+	/** Set of finishing times for every assigned room */
 	private DescriptiveStatistics completionStats= new DescriptiveStatistics();
-	/** The set of makespans for every housekeeper */
-	private int makespan= 0;
 	/** The number of rooms available at every relevant time interval */
-	private int[] roomsAvailable= {};
+	private int[] roomsAvailable;
 
 	/** Construct an empty housekeeping schedule for the instance
 	 *
@@ -49,27 +47,24 @@ public class Schedule implements Decision {
 		}
 	}
 
+	/** Construct a copy of the given Schedule */
+	public Schedule(Schedule schedule) {
+		instance= new Instance.Builder(schedule.instance).build();
+		housekeepers= new ArrayList<>(schedule.housekeepers);
+		startTimes= new HashMap<>(schedule.startTimes);
+		assign= new HashMap<>(schedule.assign);
+		completionStats= new DescriptiveStatistics(schedule.completionStats);
+		roomsAvailable= Arrays.copyOf(schedule.roomsAvailable, schedule.roomsAvailable.length);
+	}
+
 	/** Return the list of housekeepers */
 	public ArrayList<Housekeeper> getHousekeepers() {
 		return housekeepers;
 	}
 
-//	/** Return the first time interval the specified room is processed. If the room has yet <br>
-//	 * to be assigned a time to be processed, returns null.
-//	 *
-//	 * @param room The room whose start time is in question (room must be cleaned in schedule)
-//	 * @return The first time interval the specified room is processed */
-//	public Integer startOf(Room room) {
-//		if (room == null) throw new IllegalArgumentException("Room is null");
-//		if (!instance.rooms().contains(room))
-//			throw new IllegalArgumentException("The room is not in the instance for which this schedule pertains");
-//		return startTimes.get(room);
-//	}
-
 	/** Return the housekeeper assigned to the given room
 	 *
-	 * @param The room whose housekeeper is in question (room must be in instance)
-	 * @return The housekeeper cleaning this room */
+	 * @param The room whose housekeeper is in question (room must be in instance) */
 	public Housekeeper getAssignment(Room room) {
 		if (room == null) throw new IllegalArgumentException("Room is null");
 		if (!instance.rooms().contains(room)) throw new IllegalArgumentException("Room not in instance");
@@ -78,12 +73,12 @@ public class Schedule implements Decision {
 
 	/** Return the completion time of the given room */
 	public int completion(Room room) {
-		return startTimes.get(room) + room.process();
+		return startTimes.get(room) + room.process() - 1;
 	}
 
 	/** Return the statistics for completions */
 	public DescriptiveStatistics completionStats() {
-		return completionStats;
+		return new DescriptiveStatistics(completionStats);
 	}
 
 	/** Return the makespan of the schedule */
@@ -143,7 +138,7 @@ public class Schedule implements Decision {
 		return counter;
 	}
 
-	/** Prints a report of statistics for the current housekeeping schedule */
+	/** Return a report of statistics for the current housekeeping schedule */
 	public String getStatsReport() {
 		StringBuilder sb= new StringBuilder();
 		sb.append("HOUSEKEEPING STATISTICS\n");
@@ -152,31 +147,36 @@ public class Schedule implements Decision {
 		return sb.toString();
 	}
 
-	/** Append the room to the given housekeeper's cleaning schedule at the soonest start time
+	/** Append the room to the given housekeeper's cleaning schedule at the soonest start time. <br>
+	 * Return true if added to housekeeper's schedule successfully; false otherwise
 	 *
 	 * @param housekeeper The housekeeper who will be assigned this room (in the set of housekeepers)
 	 * @param room        The room to be assigned (in the instance and not yet assigned) */
-	public void append(Housekeeper housekeeper, Room room) {
+	public boolean append(Housekeeper housekeeper, Room room) {
 		int start= Math.max(housekeeper.getMakespan(), room.release()) + 1;
-		add(housekeeper, room, start);
+		return add(housekeeper, room, start);
 	}
 
-	/** Add the room to the given housekeeper's cleaning schedule at the given start time
+	/** Add the room to the given housekeeper's cleaning schedule at the given start time <br>
+	 * Return true if added to housekeeper's schedule successfully; false otherwise
 	 *
 	 * @param housekeeper The housekeeper who will be assigned this room (in the set of housekeepers)
-	 * @param room        The room to be assigned (in the instance and not yet assigned)
+	 * @param room        The room to be assigned (in the instance)
 	 * @param start       The time the housekeeper will begin cleaning this room */
-	public void add(Housekeeper housekeeper, Room room, int start) {
+	public boolean add(Housekeeper housekeeper, Room room, int start) {
 		if (!housekeepers.contains(housekeeper))
 			throw new IllegalArgumentException("Schedule does not contain this housekeeper");
 		if (!instance.rooms().contains(room)) throw new IllegalArgumentException("Room not in instance");
-		if (assign.get(room) != null) throw new IllegalArgumentException("Room already assigned housekeeper");
-		housekeeper.addRoom(room, start);
-		assign.put(room, housekeeper);
-		startTimes.put(room, start);
-		makespan= Math.max(makespan, housekeeper.getMakespan());
-		completionStats.addValue(start + room.process() - 1);
-		calculateRoomsAvailable();
+		if (assign.get(room) != null) return false;
+		if (housekeeper.addRoom(room, start)) {
+			assign.put(room, housekeeper);
+			startTimes.put(room, start);
+			completionStats.addValue(start + room.process() - 1);
+			calculateRoomsAvailable();
+			return true;
+		} else {
+			return false;
+		}
 	}
 
 	/** Return true if every room has been assigned to a housekeeper; false otherwise */
@@ -204,12 +204,11 @@ public class Schedule implements Decision {
 			startTimes.put(room, null);
 		}
 
-		makespan= 0;
 		completionStats= new DescriptiveStatistics();
 		roomsAvailable= new int[] {};
 	}
 
-	/** Prints a visual representation of the housekeeping schedule */
+	/** Return a visual representation of the housekeeping schedule */
 	public String getVisual() {
 		StringBuilder sb= new StringBuilder();
 		int minT= makespan() + 1;
@@ -230,7 +229,7 @@ public class Schedule implements Decision {
 				} else {
 					Integer start= startTimes.get(room);
 					if (start != null && t >= start && t < start + room.process()) {
-						sb.append(String.format("%-4d", assign.get(room).getID()));
+						sb.append(String.format("%-4d", assign.get(room).id()));
 					} else {
 						sb.append(String.format("%-4s", " "));
 					}
@@ -241,18 +240,28 @@ public class Schedule implements Decision {
 		return sb.toString();
 	}
 
-	/** Returns a string representing the housekeeping schedule */
+	@Override
+	public boolean equals(Object ob) {
+		if (ob == null) return false;
+		if (ob.getClass() != Schedule.class) return false;
+		Schedule schedule= (Schedule) ob;
+		if (!instance.equals(schedule.instance)) return false;
+		if (!housekeepers.equals(schedule.housekeepers)) return false;
+		if (!startTimes.equals(schedule.startTimes)) return false;
+		if (!assign.equals(schedule.assign)) return false;
+		return true;
+	}
+
 	@Override
 	public String toString() {
 		StringBuilder sb= new StringBuilder();
 		sb.append("--------------------------\n");
 		sb.append("HOUSEKEEPER\t" + "SCHEDULE\n");
 		for (Housekeeper housekeeper : housekeepers) {
-			sb.append(String.format("%-12d\t", housekeeper.getID()));
+			sb.append(String.format("%-12d\t", housekeeper.id()));
 			sb.append(housekeeper.getSchedule() + "\n");
 		}
 		sb.append("--------------------------\n");
 		return sb.toString();
 	}
-
 }

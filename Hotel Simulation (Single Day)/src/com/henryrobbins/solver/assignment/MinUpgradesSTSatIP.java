@@ -24,7 +24,7 @@ public class MinUpgradesSTSatIP implements Solver<Assignment> {
 	 * @param beta  The relaxation constant for minimum satisfaction constraint (in 0..1) */
 	public MinUpgradesSTSatIP(double alpha, double beta) {
 		if (alpha < 0 || alpha > 1) throw new IllegalArgumentException("Alpha not in range 0..1");
-		if (beta < 0 || beta > 1) throw new IllegalArgumentException("Beta not in range 0..1");
+		if (beta < 0 || beta > 1) throw new IllegalArgumentException("Beta not in range 0..1" + " " + beta);
 		this.alpha= alpha;
 		this.beta= beta;
 	}

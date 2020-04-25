@@ -12,6 +12,7 @@ import com.henryrobbins.solver.assignment.AssignmentIPSolver;
 import com.henryrobbins.solver.assignment.BestFirst;
 import com.henryrobbins.solver.assignment.Linear;
 import com.henryrobbins.solver.assignment.MaxMeanSatSTMinIP;
+import com.henryrobbins.solver.assignment.MinBelowTau;
 import com.henryrobbins.solver.assignment.MinUpgradesSTSatIP;
 import com.henryrobbins.solver.assignment.WorstFirst;
 import com.henryrobbins.solver.schedule.FirstAvailable;
@@ -31,6 +32,7 @@ public interface Solver<T extends Decision> {
 		new WorstFirst(),
 		new AssignmentIPSolver("Mean_Satisfaction"),
 		new AssignmentIPSolver("Min_Satisfaction"),
+		new MinBelowTau(0.8),
 		new AssignmentIPSolver("Satisfaction"),
 		new AssignmentIPSolver("Upgrades"),
 		new AssignmentIPSolver("Feasible"),

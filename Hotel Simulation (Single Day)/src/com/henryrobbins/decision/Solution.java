@@ -6,21 +6,20 @@ import com.henryrobbins.hotel.Guest;
 import com.henryrobbins.hotel.Instance;
 import com.henryrobbins.hotel.Room;
 
-/** Maintains both a housekeeping schedule and room assignment for a given instance <br>
- * Furthermore, it maintains additional statistics for the combined housekeeping <br>
- * schedule and room assignment such as the overlap or wait-time. */
-public final class Solution implements Decision {
+/** Maintains both a housekeeping schedule and room assignment for a given instance. */
+public class Solution implements Decision {
 
 	/** The instance that this solution is for */
-	private final Instance instance;
-	/** A housekeeping schedule for the relevant instance */
-	private final Schedule schedule;
-	/** A room assignment for the relevant instance */
-	private final Assignment assignment;
+	private Instance instance;
+	/** Housekeeping schedule for the relevant instance */
+	private Schedule schedule;
+	/** Room assignment for the relevant instance */
+	private Assignment assignment;
 
-	/** The set of tardiness' for every guest */
+	// MAINTAINS STATISTICS
+	/** Set of tardiness' for every guest */
 	private DescriptiveStatistics tardiness;
-	/** The set of lateness' for every guest */
+	/** Set of lateness' for every guest */
 	private DescriptiveStatistics lateness;
 
 	/** Construct a solution for the given instance consisting of the specified housekeeping <br>
@@ -41,24 +40,24 @@ public final class Solution implements Decision {
 		setStats();
 	}
 
-	/** Return the housekeeping schedule */
+	/** Returns a copy of the housekeeping schedule */
 	public Schedule schedule() {
-		return schedule;
+		return new Schedule(schedule);
 	}
 
-	/** Return the room assignment */
+	/** Return a copy of the room assignment */
 	public Assignment assignment() {
-		return assignment;
+		return new Assignment(assignment);
 	}
 
 	/** Return the tardiness statistics */
 	public DescriptiveStatistics tardinessStats() {
-		return tardiness;
+		return new DescriptiveStatistics(tardiness);
 	}
 
 	/** Return the lateness statistics */
 	public DescriptiveStatistics latenessStats() {
-		return lateness;
+		return new DescriptiveStatistics(lateness);
 	}
 
 	/** Set statistics */
@@ -72,7 +71,6 @@ public final class Solution implements Decision {
 		}
 	}
 
-	/** Get a string representing this solution */
 	@Override
 	public String toString() {
 		return schedule.toString() + "\n" + assignment.toString();

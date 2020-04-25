@@ -1,6 +1,7 @@
 package com.henryrobbins;
 
-import java.nio.file.Paths;
+import java.io.File;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
 
@@ -20,6 +21,14 @@ import com.henryrobbins.hotel.Room;
 
 /** This helper class contains static methods used by various solvers */
 public abstract class AMPLHelper {
+
+	/** Path to the AMPL folder */
+	private static Path path= new File("/Users/Henry/AMPL").toPath();
+
+	/** Set the AMPL path */
+	public static void setPath(Path path) {
+		AMPLHelper.path= path;
+	}
 
 	/** Run the assignment model with the given objective function on the given instance
 	 *
@@ -83,7 +92,7 @@ public abstract class AMPLHelper {
 
 	/** Create an instance of AMPL with proper options */
 	public static AMPL createAMPL() {
-		AMPL ampl= new AMPL(new Environment(Paths.get("AMPL").toString()));
+		AMPL ampl= new AMPL(new Environment(path.toString()));
 		ampl.setOption("solver", "gurobi");
 		ampl.setOption("presolve_eps", "1e-10");
 		ampl.setOption("constraint_drop_tol", "1e-10");
@@ -105,7 +114,7 @@ public abstract class AMPLHelper {
 		if (model == null || model.length() < 1) throw new IllegalArgumentException("Name less than one character");
 		String name= model.concat(".mod");
 		try {
-			ampl.read(Paths.get("AMPL", "Models", name).toString());
+			ampl.read(ResourcesPath.path().resolve("models").resolve(name).toString());
 		} catch (Exception e) {
 			throw new IllegalArgumentException("There is no .mod file named " + name + " in the Models folder");
 		}
@@ -330,7 +339,7 @@ public abstract class AMPLHelper {
 			for (Housekeeper housekeeper : schedule.getHousekeepers()) {
 				for (Object t : ampl.getSet("TIME").toArray()) {
 					String r= Integer.toString(room.num());
-					String h= Integer.toString(housekeeper.getID());
+					String h= Integer.toString(housekeeper.id());
 					double sched= ampl.getVariable("schedule").get(r, h, t).value();
 					if (sched == 1.0) {
 						schedule.add(housekeeper, room, ((Double) t).intValue());

@@ -1,10 +1,8 @@
 package com.henryrobbins.hotel;
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 
 import org.apache.commons.math3.distribution.AbstractRealDistribution;
 
@@ -13,9 +11,9 @@ import com.henryrobbins.hotel.Hotel.Builder;
 
 /** Contains static methods to construct a hotel from a parameter file or <br>
  * from a CSV file located at some given directory */
-public class HotelFactory {
+public abstract class HotelFactory {
 
-	/** Given a path to a directory containing a file named hotel.csv, read the CSV file. <br>
+	/** Read the CSV file located at the given path <br>
 	 * The CSV file should be in the following format: <br>
 	 *
 	 * <pre>
@@ -25,48 +23,34 @@ public class HotelFactory {
 	 *      h
 	 * </pre>
 	 *
-	 * @param path A path to a directory containing a file named hotel.csv */
-	public static Hotel readCSV(Path dir) {
+	 * where h represents the size of the housekeeping team
+	 *
+	 * @param path path to a csv file in the proper format */
+	public static Hotel readCSV(Path path) throws Exception {
+		if (path == null) throw new IllegalArgumentException("Path to Hotel CSV file was null.");
 		Builder builder= new Builder();
-		try {
-			Path path= Paths.get(dir.toString().concat("/hotel.csv"));
-			BufferedReader br= Files.newBufferedReader(path);
-
-			String contentLine= br.readLine();
-			contentLine= br.readLine();
-			while (contentLine != null) {
-				String[] values= contentLine.split(",");
-				if (values.length == 5) {
-					int num= Integer.parseInt(values[0].trim());
-					int type= Integer.parseInt(values[1].trim());
-					double quality= Double.parseDouble(values[2].trim());
-					int checkOut= Integer.parseInt(values[3].trim());
-					int cleanTime= Integer.parseInt(values[4].trim());
-					builder.addRoom(new Room(num, type, quality, checkOut, cleanTime));
-				} else {
-					builder.setH(Integer.parseInt(values[0]));
-				}
-				contentLine= br.readLine();
+		BufferedReader br= Files.newBufferedReader(path);
+		String contentLine= br.readLine();
+		contentLine= br.readLine();
+		while (contentLine != null) {
+			String[] values= contentLine.split(",");
+			if (values.length == 5) {
+				int num= Integer.parseInt(values[0].trim());
+				int type= Integer.parseInt(values[1].trim());
+				double quality= Double.parseDouble(values[2].trim());
+				int checkOut= Integer.parseInt(values[3].trim());
+				int cleanTime= Integer.parseInt(values[4].trim());
+				builder.addRoom(new Room(num, type, quality, checkOut, cleanTime));
+			} else if (values.length == 1) {
+				builder.setH(Integer.parseInt(values[0]));
+			} else {
+				br.close();
+				throw new IllegalArgumentException("The Hotel CSV file is not in the proper format.");
 			}
-			br.close();
-		} catch (IOException ioe) {
-			throw new IllegalArgumentException("Error reading Hotel CSV file");
+			contentLine= br.readLine();
 		}
+		br.close();
 		return builder.build();
-	}
-
-	/** Read the hotel.csv located under the given name in the Simulations directory
-	 *
-	 * @param name The name of the directory in Simulations containing the hotel.csv file */
-	public static Hotel readCSV(String name) {
-		return readCSV(Paths.get("Simulations", name));
-	}
-
-	/** Read the hotel.csv located under the given id in the Simulations directory
-	 *
-	 * @param name The name of the directory in Simulations containing the hotel.csv file */
-	public static Hotel readCSV(int id) {
-		return readCSV(Paths.get("Simulations", String.valueOf(id)));
 	}
 
 	/** Create a randomly generated hotel with n rooms */

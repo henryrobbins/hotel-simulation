@@ -1,22 +1,18 @@
 package com.henryrobbins.hotel;
 
-/** Maintains information about a hotel room. This includes the room number, room type, <br>
- * time interval in which the current guest checks out and the room becomes available <br>
- * to be cleaned by housekeeping, amd the time it takes to clean this room. <br>
- * <br>
- * Note: this class has a natural ordering that is inconsistent with equals */
+/** Maintains information about an immutable hotel room. */
 public final class Room implements Comparable<Room> {
 
-	/** This room's room number (at least 1) */
+	/** Hotel room number (at least 1) */
 	private final int number;
-	/** This room's type (at least 1) */
+	/** Room type (at least 1) */
 	private final int type;
-	/** The intrinsic quality of this room (in [0,1]) */
+	/** Intrinsic quality of this room (in [0,1]) */
 	private final double quality;
-	/** The time when the room is released to be cleaned (at least 0) <br>
+	/** The time (interval) when the room is released to be cleaned (at least 0) <br>
 	 * [In other words, the time interval in which the previous guest leaves] */
 	private final int release;
-	/** The time it takes housekeeping to process (clean) this room (at least 1) */
+	/** The time (in intervals) it takes housekeeping to process (clean) this room (at least 1) */
 	private final int process;
 
 	/** Construct a room with specified number, type, quality, and release and processing time
@@ -24,8 +20,8 @@ public final class Room implements Comparable<Room> {
 	 * @param number  This room's room number (at least 1)
 	 * @param type    This room's type (at least 1)
 	 * @param quality This room's intrinsic quality (in [0,1])
-	 * @param release The time when the room is released to be cleaned (at least 0)
-	 * @param process The time it takes housekeeping to process this room (at least 1) */
+	 * @param release The time (interval) when the room is released to be cleaned (at least 0)
+	 * @param process The time (in intervals) it takes housekeeping to process this room (at least 1) */
 	public Room(int number, int type, double quality, int release, int process) {
 		if (number < 1) throw new IllegalArgumentException("Room number less than 1");
 		if (type < 1) throw new IllegalArgumentException("Room type less than 1");
@@ -82,7 +78,7 @@ public final class Room implements Comparable<Room> {
 	/** Return this room's room number as a string */
 	@Override
 	public String toString() {
-//		Previous implementation
+//		PREVIOUS IMPLEMENTATION
 //		StringBuilder sb= new StringBuilder();
 //		sb.append("Room: " + number + ", ");
 //		sb.append("Type: " + type + ", ");

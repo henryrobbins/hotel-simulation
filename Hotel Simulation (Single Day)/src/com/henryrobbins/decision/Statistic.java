@@ -12,6 +12,7 @@ public interface Statistic<T extends Decision> {
 	ArrayList<Statistic<Assignment>> ASSIGNMENT_STATS= new ArrayList<>(Arrays.asList(
 		new MaxSatisfaction(),
 		new MinSatisfaction(),
+		new PercentBelowTau(0.8),
 		new MeanSatisfaction(),
 		new MaxUpgrade(),
 		new MinUpgrade(),
@@ -39,6 +40,33 @@ public interface Statistic<T extends Decision> {
 		@Override
 		public String toString() {
 			return "Min Satisfaction";
+		}
+	}
+
+	public class PercentBelowTau implements Statistic<Assignment> {
+
+		private double tau;
+
+		public PercentBelowTau(double tau) {
+			this.tau= tau;
+		}
+
+		@Override
+		public Double getStat(Assignment assignment) {
+			int belowCount= 0;
+			double[] sortedSats= assignment.satisfactionStats().getSortedValues();
+			int numOfArrivals= sortedSats.length;
+			int i= 0;
+			while (i < numOfArrivals && sortedSats[i] < tau) {
+				belowCount++ ;
+				i++ ;
+			}
+			return (double) belowCount / (double) numOfArrivals;
+		}
+
+		@Override
+		public String toString() {
+			return "Percent Below " + tau;
 		}
 	}
 
