@@ -35,7 +35,7 @@ import com.henryrobbins.hotel.InstanceFactory;
 import com.henryrobbins.simulation.SimAddGuest;
 import com.henryrobbins.simulation.SimHotel;
 import com.henryrobbins.simulation.SimInstanceSolvers;
-import com.henryrobbins.simulation.SimRelaxations;
+import com.henryrobbins.simulation.SimParameters;
 import com.henryrobbins.simulation.SimRunTimes;
 import com.henryrobbins.simulation.SimShowTrials;
 import com.henryrobbins.simulation.SimSolvers;
@@ -57,7 +57,7 @@ public class SimulationWindow extends JFrame {
 			"Random - Compare",
 			"Random - Compare (Trials)",
 			"Random - Run Times",
-			"Random - Relaxations",
+			"Random - Parameters",
 			"Random - Add Guest" });
 	private String simType= new String();
 
@@ -95,6 +95,9 @@ public class SimulationWindow extends JFrame {
 	private JLabel weightsFileLbl= new JLabel("No File Selected");
 	private Path weightsPath;
 
+	private JLabel objLbl= new JLabel("Objective:");
+	private JTextField objField= new JTextField(20);
+
 	private JLabel sizesLbl= new JLabel("Hotel Size(s):");
 	private JTextField sizesField= new JTextField(20);
 
@@ -107,6 +110,9 @@ public class SimulationWindow extends JFrame {
 	private JLabel betaLbl= new JLabel("Beta(s):");
 	private JTextField betaField= new JTextField(20);
 
+	private JLabel gammaLbl= new JLabel("Gamma(s):");
+	private JTextField gammaField= new JTextField(20);
+
 	private JLabel solversLbl= new JLabel("SOLVERS");
 	private LinkedHashMap<Solver<Assignment>, JCheckBox> solvers= new LinkedHashMap<>();
 
@@ -118,8 +124,8 @@ public class SimulationWindow extends JFrame {
 
 	private HashSet<JComponent> components= new HashSet<>(Arrays.asList(paramLbl, paramChooseBtn, param, hotelLbl,
 		hotelChooseBtn, hotelFileLbl, arrivalsLbl, arrivalsChooseBtn, arrivalsFileLbl, weightsLbl, weightsChooseBtn,
-		weightsFileLbl,
-		sizesLbl, sizesField, trialLbl, trialField, alphaLbl, alphaField, betaLbl, betaField));
+		weightsFileLbl, sizesLbl, sizesField, trialLbl, trialField, alphaLbl, alphaField, betaLbl, betaField,
+		gammaLbl, gammaField, objLbl, objField));
 
 	/** Corrects the Construct the GUI */
 	public SimulationWindow() {
@@ -303,25 +309,49 @@ public class SimulationWindow extends JFrame {
 		c.gridx= 0;
 		c.gridy= 8;
 		c.anchor= GridBagConstraints.LINE_START;
-		topPanel.add(alphaLbl, c);
+		topPanel.add(objLbl, c);
 
 		c.gridx= 1;
 		c.gridy= 8;
+		c.gridwidth= 2;
+		c.anchor= GridBagConstraints.LINE_START;
+		topPanel.add(objField, c);
+		c.gridwidth= 1;
+
+		c.gridx= 0;
+		c.gridy= 9;
+		c.anchor= GridBagConstraints.LINE_START;
+		topPanel.add(alphaLbl, c);
+
+		c.gridx= 1;
+		c.gridy= 9;
 		c.gridwidth= 2;
 		c.anchor= GridBagConstraints.LINE_START;
 		topPanel.add(alphaField, c);
 		c.gridwidth= 1;
 
 		c.gridx= 0;
-		c.gridy= 9;
+		c.gridy= 10;
 		c.anchor= GridBagConstraints.LINE_START;
 		topPanel.add(betaLbl, c);
 
 		c.gridx= 1;
-		c.gridy= 9;
+		c.gridy= 10;
 		c.gridwidth= 2;
 		c.anchor= GridBagConstraints.LINE_START;
 		topPanel.add(betaField, c);
+		c.gridwidth= 1;
+
+		c.gridx= 0;
+		c.gridy= 11;
+		c.anchor= GridBagConstraints.LINE_START;
+		topPanel.add(gammaLbl, c);
+
+		c.gridx= 1;
+		c.gridy= 11;
+		c.gridwidth= 2;
+		c.anchor= GridBagConstraints.LINE_START;
+		topPanel.add(gammaField, c);
 		c.gridwidth= 1;
 
 		middlePanel= new JPanel(new GridBagLayout());
@@ -464,8 +494,8 @@ public class SimulationWindow extends JFrame {
 				solversAndStats();
 			} else if (type[1].equals("Run Times")) {
 				solversAndStats();
-			} else if (type[1].equals("Relaxations")) {
-				alphaAndBeta();
+			} else if (type[1].equals("Parameters")) {
+				parametersVisb();
 			} else if (type[1].equals("Add Guest")) {
 				// nothing
 			}
@@ -504,10 +534,9 @@ public class SimulationWindow extends JFrame {
 						.start();
 				} else if (typeChoose.getSelectedItem().equals("Random - Run Times")) {
 					new SimRunTimes<>(getT(), getSizes(), getSolvers(), resultDir, name, progress).start();
-				} else if (typeChoose.getSelectedItem().equals("Random - Relaxations")) {
-					new SimRelaxations(getT(), getSizes()[0], getAlphas(), getBetas(), Statistic.ASSIGNMENT_STATS,
-						resultDir,
-						name, progress).start();
+				} else if (typeChoose.getSelectedItem().equals("Random - Parameters")) {
+					new SimParameters(getT(), getSizes()[0], getAlphas(), getBetas(), getGammas(),
+						objField.getText(), Statistic.ASSIGNMENT_STATS, resultDir, name, progress).start();
 				} else if (typeChoose.getSelectedItem().equals("Random - Add Guest")) {
 					new SimAddGuest(getT(), getSizes(), resultDir, name, progress).start();
 				}
@@ -558,11 +587,15 @@ public class SimulationWindow extends JFrame {
 		trialField.setVisible(true);
 	}
 
-	private void alphaAndBeta() {
+	private void parametersVisb() {
+		objLbl.setVisible(true);
+		objField.setVisible(true);
 		alphaLbl.setVisible(true);
 		alphaField.setVisible(true);
 		betaLbl.setVisible(true);
 		betaField.setVisible(true);
+		gammaLbl.setVisible(true);
+		gammaField.setVisible(true);
 	}
 
 	private void solversAndStats() {
@@ -633,5 +666,17 @@ public class SimulationWindow extends JFrame {
 			}
 		}
 		return betas;
+	}
+
+	private double[] getGammas() {
+		double[] gammas= {};
+		if (gammaField.getText().length() > 0) {
+			String[] gamma= gammaField.getText().split(",");
+			gammas= new double[gamma.length];
+			for (int i= 0; i < gamma.length; i++ ) {
+				gammas[i]= Double.parseDouble(gamma[i]);
+			}
+		}
+		return gammas;
 	}
 }

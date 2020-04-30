@@ -49,6 +49,34 @@ public abstract class AMPLHelper {
 		return assignment;
 	}
 
+	/** Run the assignment model with the given objective function on the given instance
+	 *
+	 * @param obj      The name of the objective function (defined in the model)
+	 * @param instance The instance to generate a room assignment for (not null)
+	 * @param alpha    setting for the tunable parameter alpha
+	 * @param beta     setting for the tunable parameter beta
+	 * @param gamma    setting for the tunable parameter gamma
+	 * @param tau      setting for the tunable parameter tau
+	 * @return A room assignment for the given instance */
+	public static Assignment runAssignmentIP(Instance instance, String obj, double tau, double alpha, double beta,
+		double gamma) {
+		if (instance == null) throw new IllegalArgumentException("Instance is null");
+
+		AMPL ampl= createAMPL();
+		uploadModel(ampl, "assignment");
+		setObjectiveFunction(ampl, obj);
+		setRoomAndGuestParams(ampl, instance);
+		ampl.getParameter("tau").set(tau);
+		ampl.getParameter("alpha").set(alpha);
+		ampl.getParameter("beta").set(beta);
+		ampl.getParameter("gamma").set(gamma);
+		ampl.solve();
+
+		Assignment assignment= getAssignment(ampl, instance);
+		close(ampl);
+		return assignment;
+	}
+
 	/** Run the schedule model with the given objective function for the given instance
 	 *
 	 * @param obj      The name of the objective function (defined in the model)

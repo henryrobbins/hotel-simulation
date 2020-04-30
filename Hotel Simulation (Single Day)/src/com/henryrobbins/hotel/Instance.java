@@ -335,24 +335,24 @@ public final class Instance {
 		sb.append("GUESTS (ROW) x ROOMS (COL) WEIGHTS\n");
 		sb.append("---");
 		for (int i= 0; i < guests.size(); i++ ) {
-			sb.append("-----");
+			sb.append("----------");
 		}
 		sb.append("\n");
 		sb.append("     ");
 		for (Room room : rooms) {
-			sb.append(String.format("%-5d", room.num()));
+			sb.append(String.format("%-10d", room.num()));
 		}
 		sb.append("\n");
 		for (Guest guest : guests) {
 			sb.append(String.format("%-5d", guest.id()));
 			for (Room room : rooms) {
 				Double wgt= weights.get(guest, room);
-				sb.append(String.format("%-5.1f", wgt));
+				sb.append(String.format("%-10.5f", wgt));
 			}
 			sb.append("\n");
 		}
 		for (int i= 0; i < guests.size(); i++ ) {
-			sb.append("-----");
+			sb.append("----------");
 		}
 		sb.append("---\n");
 		return sb.toString();

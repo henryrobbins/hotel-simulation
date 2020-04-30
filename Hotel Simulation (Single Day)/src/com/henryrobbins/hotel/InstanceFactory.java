@@ -109,57 +109,11 @@ public abstract class InstanceFactory {
 		br.close();
 	}
 
-	/** Create a feasible random Instance with n room */
+	/** Create a feasible random Instance with n rooms */
 	public static Instance randInstance(int n) {
-		Instance instance= null;
-
-		boolean feasible= false;
-		while (!feasible) {
-
-			Hotel hotel= HotelFactory.randHotel(n);
-			ArrayList<Room> rooms= hotel.rooms();
-			Instance.Builder builder= new Instance.Builder(hotel);
-
-			// The number of arriving guests binomially distributed around average number of guests
-			BinomialDistribution guestSize= new BinomialDistribution(n, RandProperties.avgCapacity);
-
-			int g= Math.max(1, guestSize.sample());
-			for (int i= 1; i <= g; i++ ) {
-				int id= i;
-				int type= RandProperties.requestDistribution.sample(1)[0];
-				int arrival= rejectionIntSample(RandProperties.checkin, RandProperties.checkinLB,
-					RandProperties.checkinUB);
-				builder.addGuest(new Guest(id, type, arrival));
-			}
-
-			ArrayList<Guest> guests= builder.guests();
-
-			for (Guest guest : guests) {
-				// Generate guest satisfaction lower and upper bounds
-				double ubSat= 1.0;
-				double lbSat= 0.4;
-//				double ubSat= rejectionSample(RandProperties.ubSatDistribution, 0, 1);
-//				double lbSat= ubSat * rejectionSample(RandProperties.lbSatDistribution, 0, 1);
-				for (Room room : rooms) {
-					// Initialize 1 if room upgrade; 0 otherwise
-					int upgraded= Math.min(1, room.type() - guest.type());
-					// Determine guest satisfaction;
-					double sat= Math.min(1,
-						lbSat + (ubSat - lbSat) * room.quality() + upgraded * RandProperties.upgradeBonus);
-					// Introduce more randomness
-					NormalDistribution satDist= new NormalDistribution(0, RandProperties.randSat);
-					sat= Math.max(0, Math.min(1, sat + satDist.sample()));
-					builder.addWeight(guest, room, sat);
-				}
-			}
-
-			instance= builder.build();
-			feasible= instance.feasible();
-		}
-		return instance;
+		return randInstance(HotelFactory.randHotel(n));
 	}
 
-	// TODO: Clean up and make less repetitive
 	/** Create a feasible random Instance for a given hotel */
 	public static Instance randInstance(Hotel hotel) {
 		Instance instance= null;
@@ -198,7 +152,9 @@ public abstract class InstanceFactory {
 						lbSat + (ubSat - lbSat) * room.quality() + upgraded * RandProperties.upgradeBonus);
 					// Introduce more randomness
 					NormalDistribution satDist= new NormalDistribution(0, RandProperties.randSat);
-					sat= Math.max(0, Math.min(1, sat + satDist.sample()));
+					sat= sat + satDist.sample();
+					sat= (double) Math.round(sat * 100000) / 100000;
+					sat= Math.min(1, sat);
 					builder.addWeight(guest, room, sat);
 				}
 			}
@@ -241,7 +197,9 @@ public abstract class InstanceFactory {
 				lbSat + (ubSat - lbSat) * room.quality() + upgraded * RandProperties.upgradeBonus);
 			// Introduce more randomness
 			NormalDistribution satDist= new NormalDistribution(0, RandProperties.randSat);
-			sat= Math.min(1, sat + satDist.sample());
+			sat= sat + satDist.sample();
+			sat= (double) Math.round(sat * 100000) / 100000;
+			sat= Math.min(1, sat);
 			builder.addWeight(add, room, sat);
 		}
 

@@ -1,81 +1,57 @@
 package com.henryrobbins;
 
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Arrays;
+
+import com.henryrobbins.decision.Assignment;
+import com.henryrobbins.decision.Statistic;
+import com.henryrobbins.decision.Statistic.MeanSatisfaction;
+import com.henryrobbins.decision.Statistic.MinSatisfaction;
+import com.henryrobbins.decision.Statistic.SumUpgrade;
+import com.henryrobbins.simulation.SimParameters;
+import com.henryrobbins.solver.Solver;
+import com.henryrobbins.solver.assignment.AssignmentIPSolver;
+import com.henryrobbins.solver.assignment.BestFirst;
+import com.henryrobbins.solver.assignment.Linear;
+import com.henryrobbins.solver.assignment.WorstFirst;
+
 public class Main {
 
 	public static void main(String[] args) {
 
-		// PAPER SIMULATION
+		// TESTING
 
-//		File file= new File("/Users/Henry/Downloads");
-//
-//		ArrayList<Solver<Assignment>> solvers= new ArrayList<>(Arrays.asList(
-//			new Linear(),
-//			new BestFirst(),
-//			new WorstFirst(),
-//			new AssignmentIPSolver("Mean_Satisfaction"),
-//			new AssignmentIPSolver("Min_Satisfaction"),
-//			new MinBelowTau(0.8)));
-//
-////			new AssignmentIPSolver("Satisfaction")));
-//
-//		ArrayList<Statistic<Assignment>> stats= new ArrayList<>(Arrays.asList(
-//			new MinSatisfaction(),
-//			new MeanSatisfaction(),
-//			new PercentBelowTau(0.8)));
+		int t= 5;
+		int s[]= { 25, 50, 75, 100 };
+		double a[]= { 0, 1 };
+		double b[]= { 0, 1 };
+		double g[]= { 0, 1 };
+		String obj= "Mean_Min_Sat_And_Upgrades";
+		ArrayList<Solver<Assignment>> solvers= new ArrayList<>(Arrays.asList(
+			new Linear(),
+			new BestFirst(),
+			new WorstFirst(),
+			new AssignmentIPSolver("Mean_Satisfaction"),
+			new AssignmentIPSolver("Min_Satisfaction"),
+			new AssignmentIPSolver("Below_Tau", 0.8),
+			new AssignmentIPSolver("Upgrades"),
+			new AssignmentIPSolver("Feasible"),
+			new AssignmentIPSolver("Mean_And_Min_Satisfaction", 1, 1, 0),
+			new AssignmentIPSolver("Mean_Min_Sat_And_Upgrades", 1, 1, 1),
+			new AssignmentIPSolver("Mean_And_Below_Tau", 0.8, 1, 1, 0),
+			new AssignmentIPSolver("Mean_Below_Tau_And_Upgrades", 0.8, 1, 1, 1)));
+		ArrayList<Statistic<Assignment>> stats= new ArrayList<>(Arrays.asList(
+			new MeanSatisfaction(),
+			new MinSatisfaction(),
+//			new PercentBelowTau(0.8),
+			new SumUpgrade()));
+		File resultDir= new File("/Users/Henry/Downloads");
+		String name= "res";
 
-//		PercentBelowTau stat= new PercentBelowTau(0.75);
-//		MinBelowTau solver= new MinBelowTau(0.75);
-//		Hotel hotel= HotelFactory.readCSV("HotelEx");
-//		Hotel hotel= HotelFactory.randHotel(25);
-//		hotel.writeCSV();
-//		Instance instance= InstanceFactory.readCSV("HotelEx", "InstEx");
-//		Instance instance= InstanceFactory.randInstance(20);
-//		Solver<Schedule> solver= new FirstAvailable();
-//		System.out.println(instance);
-//		System.out.println(solver.solve(instance).getVisual());
-//		Assignment assignment= solver.solve(instance);
-//		System.out.println(instance);
-//		System.out.println(assignment);
-//		System.out.println(stat.getStat(assignment));
-
-//		new SimHotel<>(25, hotel, Solver.ASSIGNMENT_SOLVERS, Statistic.ASSIGNMENT_STATS, file, "res", null).start();
-
-//		new SimSolvers<>(10, new int[] { 100 }, solvers, stats, file, "solversAvg_n100_t500", null).start();
-//
-//		new SimSolvers<>(100, new int[] { 25, 50, 75, 100 }, solvers, stats, file, "solversAvg_n100_t250", null)
-//			.start();
-//		new SimShowTrials<>(100, 50, solvers, stats, file, "histoMean_n100_t1000", null).start();
-
-//
-//		new SimRelaxations(50, 50, new double[] { 1, 0.98, 0.96, 0.94, 0.92, 0.90 },
-//			new double[] { 1, 0.98, 0.96, 0.94, 0.92, 0.90 }, Statistic.ASSIGNMENT_STATS, file, "abRelax_n100_t500_02",
-//			null).start();
-//
-//		new SimRelaxations(500, 50, new double[] { 1, 0.995, 0.99, 0.985, 0.98, 0.975, 0.97, 0.965, 0.96, 0.955, 0.95 },
-//			new double[] { 1 }, Statistic.ASSIGNMENT_STATS, file,
-//			"abRelax_n50_t500_005", null).start();
-//
-//		new SimRelaxations(500, 75, new double[] { 1, 0.995, 0.99, 0.985, 0.98, 0.975, 0.97, 0.965, 0.96, 0.955, 0.95 },
-//			new double[] { 1 }, Statistic.ASSIGNMENT_STATS, file,
-//			"abRelax_n75_t500_005", null).start();
-//
-//		new SimRelaxations(500, 100,
-//			new double[] { 1, 0.995, 0.99, 0.985, 0.98, 0.975, 0.97, 0.965, 0.96, 0.955, 0.95 },
-//			new double[] { 1 }, Statistic.ASSIGNMENT_STATS, file,
-//			"abRelax_n100_t500_005", null).start();
-//
-//		new SimRelaxations(500, 125,
-//			new double[] { 1, 0.995, 0.99, 0.985, 0.98, 0.975, 0.97, 0.965, 0.96, 0.955, 0.95 },
-//			new double[] { 1 }, Statistic.ASSIGNMENT_STATS, file,
-//			"abRelax_n125_t500_005", null).start();
-//
-//		new SimRelaxations(500, 150,
-//			new double[] { 1, 0.995, 0.99, 0.985, 0.98, 0.975, 0.97, 0.965, 0.96, 0.955, 0.95 },
-//			new double[] { 1 }, Statistic.ASSIGNMENT_STATS, file,
-//			"abRelax_n150_t500_005", null).start();
-//
-//		new SimAddGuest(50, new int[] { 10, 150, 20, 140, 30, 130, 40, 120, 50, 110, 60, 100, 70, 80, 90 }, file,
-//			"addGuest_t500", null).start();
+//		new SimRunTimes<>(t, s, solvers, resultDir, name, null).start();
+//		new SimSolvers<>(t, s, solvers, stats, resultDir, name, null).start();
+		new SimParameters(t, s[0], a, b, g, obj, stats, resultDir, name, null).start();
 
 	}
 }

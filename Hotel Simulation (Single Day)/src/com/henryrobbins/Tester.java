@@ -18,7 +18,10 @@ import com.henryrobbins.decision.Assignment;
 import com.henryrobbins.decision.Schedule;
 import com.henryrobbins.decision.Solution;
 import com.henryrobbins.decision.Statistic;
+import com.henryrobbins.decision.Statistic.MeanSatisfaction;
+import com.henryrobbins.decision.Statistic.MinSatisfaction;
 import com.henryrobbins.decision.Statistic.PercentBelowTau;
+import com.henryrobbins.decision.Statistic.SumUpgrade;
 import com.henryrobbins.hotel.Guest;
 import com.henryrobbins.hotel.Hotel;
 import com.henryrobbins.hotel.HotelFactory;
@@ -29,9 +32,6 @@ import com.henryrobbins.hotel.Room;
 import com.henryrobbins.solver.assignment.AssignmentIPSolver;
 import com.henryrobbins.solver.assignment.BestFirst;
 import com.henryrobbins.solver.assignment.Linear;
-import com.henryrobbins.solver.assignment.MaxMeanSatSTMinIP;
-import com.henryrobbins.solver.assignment.MinBelowTau;
-import com.henryrobbins.solver.assignment.MinUpgradesSTSatIP;
 import com.henryrobbins.solver.assignment.OnlineMeanSatIP;
 import com.henryrobbins.solver.assignment.PreserveEdgesMeanSat;
 import com.henryrobbins.solver.assignment.SuggestiveMeanSatIP;
@@ -48,9 +48,9 @@ import com.henryrobbins.solver.solution.SolutionIPSolver;
 class Tester {
 
 	/** The number of random instances to test */
-	private static int t= 25;
+	private static int t= 5;
 	/** The size of the randomly generated hotels */
-	private static int n= 10;
+	private static int n= 5;
 
 	/** The test instances */
 	private static Instance[] test= new Instance[6];
@@ -455,12 +455,12 @@ class Tester {
 		sb.append("3     	1    	3      \n");
 		sb.append("-----------------------\n\n");
 		sb.append("GUESTS (ROW) x ROOMS (COL) WEIGHTS\n");
-		sb.append("------------------\n");
-		sb.append("     1    2    3    \n");
-		sb.append("1    1.0  0.1  0.7  \n");
-		sb.append("2    0.9  0.4  0.3  \n");
-		sb.append("3    0.8  1.0  0.0  \n");
-		sb.append("------------------\n");
+		sb.append("---------------------------------\n");
+		sb.append("     1         2         3         \n");
+		sb.append("1    1.00000   0.10000   0.70000   \n");
+		sb.append("2    0.90000   0.40000   0.30000   \n");
+		sb.append("3    0.80000   1.00000   0.00000   \n");
+		sb.append("---------------------------------\n");
 		assertEquals(sb.toString(), primary.toString());
 	}
 
@@ -986,7 +986,6 @@ class Tester {
 
 		Linear solver= new Linear();
 		Instance instance= test[2];
-		System.out.println(instance);
 		assertThrows(IllegalArgumentException.class, () -> { solver.solve(null); });
 		Assignment assignment= solver.solve(instance);
 		assertEquals((double) 11 / 18, assignment.satisfactionStats().getMean(), 0.01);
@@ -1025,9 +1024,19 @@ class Tester {
 	}
 
 	@Test
+	void testAssignmentIPParamaters() {
+
+		assertThrows(IllegalArgumentException.class, () -> { new AssignmentIPSolver(null, 0, 1, 1, 1); });
+		assertThrows(IllegalArgumentException.class, () -> { new AssignmentIPSolver("test", -1, 1, 1, 1); });
+		assertThrows(IllegalArgumentException.class, () -> { new AssignmentIPSolver("test", 2, 1, 1, 1); });
+		assertThrows(IllegalArgumentException.class, () -> { new AssignmentIPSolver("test", 0.8, -1, 1, 1); });
+		assertThrows(IllegalArgumentException.class, () -> { new AssignmentIPSolver("test", 0.8, 1, -1, 1); });
+		assertThrows(IllegalArgumentException.class, () -> { new AssignmentIPSolver("test", 0.8, 1, 1, -1); });
+	}
+
+	@Test
 	void testMeanSatIP() {
 
-		assertThrows(IllegalArgumentException.class, () -> { new AssignmentIPSolver(null); });
 		AssignmentIPSolver solver= new AssignmentIPSolver("Mean_Satisfaction");
 		assertThrows(IllegalArgumentException.class, () -> { solver.solve(null); });
 		Instance instance= test[2];
@@ -1051,23 +1060,11 @@ class Tester {
 	@Test
 	void testMinBelowTau() {
 
-		MinBelowTau solver= new MinBelowTau(0.8);
+		AssignmentIPSolver solver= new AssignmentIPSolver("Below_Tau", 0.8);
 		Instance instance= test[2];
 		Assignment assignment= solver.solve(instance);
 		assertEquals(0.333333, new PercentBelowTau(0.8).getStat(assignment), 0.0001);
-		assertEquals("Min Below 0.8 IP", solver.toString());
-
-	}
-
-	@Test
-	void testSatisfactionIP() {
-
-		AssignmentIPSolver solver= new AssignmentIPSolver("Satisfaction");
-		Instance instance= test[2];
-		Assignment assignment= solver.solve(instance);
-		assertEquals((double) 31 / 36, assignment.satisfactionStats().getMean(), 0.01);
-		assertEquals(0.50, assignment.satisfactionStats().getMin(), 0.01);
-		assertEquals("Satisfaction", solver.toString());
+		assertEquals("Below_Tau", solver.toString());
 
 	}
 
@@ -1125,59 +1122,83 @@ class Tester {
 	}
 
 	@Test
-	void testMaxMeanSatSTMinIP() {
+	void testMaxAndMinSat() {
 
-		MaxMeanSatSTMinIP solver= new MaxMeanSatSTMinIP();
+		AssignmentIPSolver solver= new AssignmentIPSolver("Mean_And_Min_Satisfaction", 1, 1, 0);
 		Instance instance= test[2];
 		assertThrows(IllegalArgumentException.class, () -> { solver.solve(null); });
 		Assignment assignment= solver.solve(instance);
 
 		assertEquals((double) 31 / 36, assignment.satisfactionStats().getMean(), 0.01);
 		assertEquals(0.50, assignment.satisfactionStats().getMin(), 0.01);
-		assertEquals("maxMeanSatSTMin IP", solver.toString());
+		assertEquals("Mean_And_Min_Satisfaction", solver.toString());
 
-		AssignmentIPSolver minSat= new AssignmentIPSolver("Min_Satisfaction");
+		AssignmentIPSolver maxMeanSat= new AssignmentIPSolver("Mean_Satisfaction");
+		AssignmentIPSolver maxMinSat= new AssignmentIPSolver("Min_Satisfaction");
+
+		MeanSatisfaction meanSat= new MeanSatisfaction();
+		MinSatisfaction minSat= new MinSatisfaction();
 
 		for (int i= 0; i < t; i++ ) {
 			instance= InstanceFactory.randInstance(n);
-			double realMin= minSat.solve(instance).satisfactionStats().getMin();
-			double min= solver.solve(instance).satisfactionStats().getMin();
-			assertEquals(true, realMin >= min);
+			double optMean= meanSat.getStat(maxMeanSat.solve(instance));
+			double optMin= minSat.getStat(maxMinSat.solve(instance));
+			assignment= solver.solve(instance);
+			double mean= meanSat.getStat(assignment);
+			double min= minSat.getStat(assignment);
+			assertEquals(true, optMean >= mean);
+			assertEquals(true, optMin >= min);
 		}
 
 	}
 
 	@Test
-	void testMinUpgradesSTSatIP() {
+	void testMeanMinSatAndUpgrades() {
 
-		assertThrows(IllegalArgumentException.class, () -> { new MinUpgradesSTSatIP(1, -1); });
-		assertThrows(IllegalArgumentException.class, () -> { new MinUpgradesSTSatIP(1, 2); });
-		assertThrows(IllegalArgumentException.class, () -> { new MinUpgradesSTSatIP(-1, 1); });
-		assertThrows(IllegalArgumentException.class, () -> { new MinUpgradesSTSatIP(2, 1); });
-		MinUpgradesSTSatIP solver= new MinUpgradesSTSatIP(1, 1);
-		Instance instance= test[2];
-		assertThrows(IllegalArgumentException.class, () -> { solver.solve(null); });
-		Assignment assignment= solver.solve(instance);
+		AssignmentIPSolver solver= new AssignmentIPSolver("Mean_Min_Sat_And_Upgrades", 1, 1, 1);
+		AssignmentIPSolver maxMeanSat= new AssignmentIPSolver("Mean_Satisfaction");
+		AssignmentIPSolver maxMinSat= new AssignmentIPSolver("Min_Satisfaction");
+		AssignmentIPSolver minUpgrades= new AssignmentIPSolver("Upgrades");
 
-		assertEquals((double) 31 / 36, assignment.satisfactionStats().getMean(), 0.01);
-		assertEquals(0.50, assignment.satisfactionStats().getMin(), 0.01);
-		assertEquals(1, assignment.upgradeStats().getSum());
-		assertEquals("minUpgradesSTSat IP", solver.toString());
-
-		MaxMeanSatSTMinIP avgAndMin= new MaxMeanSatSTMinIP();
+		MeanSatisfaction meanSat= new MeanSatisfaction();
+		MinSatisfaction minSat= new MinSatisfaction();
+		SumUpgrade sumUpgrades= new SumUpgrade();
 
 		for (int i= 0; i < t; i++ ) {
-			instance= InstanceFactory.randInstance(n);
-			Assignment compare= avgAndMin.solve(instance);
-			double realMin= compare.satisfactionStats().getMin();
-			double realAvg= compare.satisfactionStats().getMean();
-			Assignment real= solver.solve(instance);
-			double min= real.satisfactionStats().getMin();
-			double avg= real.satisfactionStats().getMean();
-			assertEquals(realMin, min, 0.000001);
-			assertEquals(realAvg, avg, 0.000001);
+			Instance instance= InstanceFactory.randInstance(n);
+			double optMean= meanSat.getStat(maxMeanSat.solve(instance));
+			double optMin= minSat.getStat(maxMinSat.solve(instance));
+			double optUpgrades= sumUpgrades.getStat(minUpgrades.solve(instance));
+			Assignment assignment= solver.solve(instance);
+			double mean= meanSat.getStat(assignment);
+			double min= minSat.getStat(assignment);
+			double upgrades= sumUpgrades.getStat(assignment);
+			assertEquals(true, optMean >= mean);
+			assertEquals(true, optMin >= min);
+			assertEquals(true, optUpgrades <= upgrades);
 		}
+	}
 
+	@Test
+	void testMaxMeanSatAndBelowTau() {
+
+		AssignmentIPSolver maxMeanSat= new AssignmentIPSolver("Mean_Satisfaction");
+		AssignmentIPSolver minBelowTau= new AssignmentIPSolver("Below_Tau", 0.8);
+		AssignmentIPSolver maxMeanSatAndBelowTau= new AssignmentIPSolver("Mean_And_Below_Tau", 0.8, 1, 1, 0);
+
+		MeanSatisfaction meanSat= new MeanSatisfaction();
+		PercentBelowTau percentBelowTau= new PercentBelowTau(0.8);
+
+		for (int i= 0; i < t; i++ ) {
+			Instance instance= InstanceFactory.randInstance(n);
+			double optMean= meanSat.getStat(maxMeanSat.solve(instance));
+			double optBelowTau= percentBelowTau.getStat(minBelowTau.solve(instance));
+			Assignment assignment= maxMeanSatAndBelowTau.solve(instance);
+			double mean= meanSat.getStat(assignment);
+			double belowTau= percentBelowTau.getStat(assignment);
+			assertEquals(true, optMean >= mean);
+			assertEquals(true, optBelowTau <= belowTau);
+		}
 	}
 
 	@Test

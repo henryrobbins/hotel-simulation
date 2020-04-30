@@ -17,10 +17,13 @@ param arrival {GUESTS} integer >= 0; # the time the hotel guest arrives
 param weight {GUESTS,ROOMS} >= 0; # the satisfaction the hotel guest will have with each room
 
 # Misc. parameters
+param alpha >= 0 default 1; # parameter used in various weighted objective functions
+param beta >= 0 default 1; # parameter used in various weighted objective functions
+param gamma >= 0 default 1; # parameter used in various weighted objective functions
+param tau >= 0, <= 1 default 0; # a threshold of guest satisfaction 
+param minMeanMatchingWeight >= 0, <= 1 default 0; # the minimum mean satisfaction of a feasible matching
 param prev {GUESTS, ROOMS} binary default 0; # 1 iff guest was assigned to room in previous assignemnt. 0 otherwise
 param preservedEdges >= 0 default 0; # the minimum number of previous assignments that remain unchanged
-param minMeanMatchingWeight >= 0, <= 1 default 0; # the minimum mean satisfaction of a feasible matching
-param tau >= 0, <= 1 default 0; # a threshold of guest satisfaction 
 param guest symbolic in GUESTS default first(GUESTS); # a specific hotel guest
 
 # Decision variables
@@ -33,18 +36,38 @@ var maxTardiness integer >= 0; # the longest time a guest will wait until their 
 # Objective functions
 maximize Mean_Satisfaction: sum {g in GUESTS, r in ROOMS} assign[g,r]*weight[g,r]; # max the mean satisfaction across all guests
 maximize Min_Satisfaction: minWeight; # max the satisfaction of the least satisfied guest
-# max the previous two objective functions equally weighted
-maximize Satisfaction: sum {g in GUESTS, r in ROOMS} assign[g,r]*weight[g,r] + minWeight*card(GUESTS);
 minimize Below_Tau: sum {g in GUESTS} I[g]; # min the number of guests with satisfactions < tau
 minimize Upgrades: sum {g in GUESTS, r in ROOMS} assign[g,r]*(type[r] - request[g]); # min the number of guests upgraded to higher room types
 minimize Mean_Wait_Time: sum {g in GUESTS} tardiness[g]; # min the mean time a guest waits for their room to be ready
 minimize Max_Wait_Time: maxTardiness; # min the maximum time a guest waits for their room to be ready
-# the mean satisfaction and mean wait time objectives equally weighted
-maximize Mean_Satisfaction_And_Wait_Time: sum {g in GUESTS, r in ROOMS} assign[g,r]*weight[g,r] - (sum {g in GUESTS} tardiness[g]);
 maximize Guest_Satisfaction: sum {r in ROOMS} assign[guest, r]*weight[guest,r]; # max the satisfaction of the given guest
 maximize Preserved_Edges: sum {g in GUESTS, r in ROOMS} assign[g,r]*prev[g,r]; # max the number of perserved assignments 
 maximize Feasible: 0; # feasibility objective
 
+# Weighted objective functions
+# max Mean_Satisfaction and Min_Satisfaction
+maximize Mean_And_Min_Satisfaction: 
+	alpha*sum {g in GUESTS, r in ROOMS} assign[g,r]*weight[g,r] 
+	+ beta*minWeight;
+# max Mean_Satisfaction and Min_Satisfaction and min Upgrades
+maximize Mean_Min_Sat_And_Upgrades: 
+	alpha*(sum {g in GUESTS, r in ROOMS} assign[g,r]*weight[g,r]) 
+	+ beta*(minWeight*card(GUESTS)) 
+	- gamma*(sum {g in GUESTS, r in ROOMS} assign[g,r]*(type[r] - request[g]));
+# max Mean_Satisfaction and min Below_Tau
+maximize Mean_And_Below_Tau: 
+	alpha*(sum {g in GUESTS, r in ROOMS} assign[g,r]*weight[g,r]) 
+	- beta*(sum {g in GUESTS} I[g]);
+# max Mean_Satisfaction and min Below_Tau and Upgrades
+maximize Mean_Below_Tau_And_Upgrades: 
+	alpha*(sum {g in GUESTS, r in ROOMS} assign[g,r]*weight[g,r]) 
+	- beta*(sum {g in GUESTS} I[g])
+	- gamma*(sum {g in GUESTS, r in ROOMS} assign[g,r]*(type[r] - request[g]));
+# max Mean_Satisfaction and min Mean_Wait_Time
+maximize Mean_Satisfaction_And_Wait_Time: 
+	alpha*(sum {g in GUESTS, r in ROOMS} assign[g,r]*weight[g,r]) 
+	- beta*(sum {g in GUESTS} tardiness[g]);
+	
 # Every guest is assigned to exactly one room
 subject to Perfect_Matching {g in GUESTS}:
 	sum {r in ROOMS} assign[g,r] = 1;
@@ -64,7 +87,7 @@ subject to Preserve_Assignments:
 # The satisfaction of every guest is equal to or greater than the minimum satisfaction
 subject to Minimum_Weight {g in GUESTS}:
     sum {r in ROOMS} assign[g,r]*weight[g,r] >= minWeight;
-  
+    
 # The mean satisfaction is equal to or greater than the minimum allowed
 subject to Minimum_Mean_Matching_Weight:
     (sum {g in GUESTS, r in ROOMS} assign[g,r]*weight[g,r])/card(GUESTS) >= minMeanMatchingWeight;
