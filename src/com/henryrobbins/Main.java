@@ -26,8 +26,8 @@ public class Main {
 
 	public static void main(String[] args) throws Exception {
 
-		Instance instance= InstanceFactory.randInstance(200);
-		instance.writeCSV(new File("/Users/Henry/Downloads").toPath(), "hotel.csv");
+		Instance instance= InstanceFactory.randInstance(10);
+		instance.writeCSV(new File("/Users/Henry/Downloads").toPath(), "test");
 
 		/** DEMO **/
 
@@ -39,9 +39,9 @@ public class Main {
 		/** READING CSV FILES */
 
 		// Paths to CSV files
-		Path hotelCSV= new File("/Users/Henry/Downloads/hotel.csv").toPath();
-		Path arrivalsCSV= new File("/Users/Henry/Downloads/arrivals.csv").toPath();
-		Path weightsCSV= new File("/Users/Henry/Downloads/weights.csv").toPath();
+		Path hotelCSV= new File("/Users/Henry/Downloads/test/hotel.csv").toPath();
+		Path arrivalsCSV= new File("/Users/Henry/Downloads/test/arrivals.csv").toPath();
+		Path weightsCSV= new File("/Users/Henry/Downloads/test/weights.csv").toPath();
 
 		// Create a hotel from a CSV file
 		Hotel hotel= HotelFactory.readCSV(hotelCSV);
@@ -97,7 +97,7 @@ public class Main {
 		AssignmentIPSolver minBelow85= new AssignmentIPSolver("Below_Tau", 0.85);
 
 		// Create random instance and solve
-		instance= InstanceFactory.randInstance(25);
+		instance= InstanceFactory.randInstance(10);
 		Assignment assignment80= minBelow80.solve(instance);
 		Assignment assignment85= minBelow85.solve(instance);
 		Assignment assignment90= minBelow90.solve(instance);
@@ -111,9 +111,9 @@ public class Main {
 		/** Running a Simulation */
 
 		// Load CSV files and create Instance
-		hotelCSV= new File("/Users/Henry/Downloads/hotel.csv").toPath();
-		arrivalsCSV= new File("/Users/Henry/Downloads/arrivals.csv").toPath();
-		weightsCSV= new File("/Users/Henry/Downloads/weights.csv").toPath();
+		hotelCSV= new File("/Users/Henry/Downloads/test/hotel.csv").toPath();
+		arrivalsCSV= new File("/Users/Henry/Downloads/test/arrivals.csv").toPath();
+		weightsCSV= new File("/Users/Henry/Downloads/test/weights.csv").toPath();
 		instance= InstanceFactory.readCSV(hotelCSV, arrivalsCSV, weightsCSV);
 
 		// Solvers to run
