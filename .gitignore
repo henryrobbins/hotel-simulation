@@ -12,6 +12,7 @@
 
 # Package Files #
 *.jar
+!hotel-simulation.jar
 *.war
 *.nar
 *.ear
